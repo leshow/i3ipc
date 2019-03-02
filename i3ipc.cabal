@@ -1,0 +1,70 @@
+name:                i3ipc
+version:             0.1.0.0
+description:         Library for controlling i3 through i3 IPC
+homepage:            https://github.com/leshow/i3ipc#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Evan Cameron
+maintainer:          cameron.evan@gmail.com
+copyright:           2019 Evan Cameron
+category:            Lib
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     I3IPC
+  build-depends:       base >= 4.7 && < 5
+                     , async
+                     , containers
+                     , aeson
+                     , bytestring
+                     , typed-process
+  default-language:    Haskell2010
+  ghc-options:         -O2 -threaded "-with-rtsopts=-N" -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -frefinement-level-hole-fits=1
+  default-extensions:          DeriveFoldable
+                            , DeriveFunctor
+                            , DeriveGeneric
+                            , DeriveTraversable
+                            , DeriveLift
+                            , DerivingStrategies
+                            , GeneralizedNewtypeDeriving
+                            , OverloadedStrings
+                            , OverloadedLabels
+                            , ExistentialQuantification
+                            , StandaloneDeriving
+                            , ScopedTypeVariables
+                            , UnicodeSyntax
+                            , BinaryLiterals
+                            , NumDecimals
+                            , ConstraintKinds
+                            , RankNTypes
+                            , TypeFamilies
+                            , TypeInType
+                            , PolyKinds
+                            , DataKinds
+                            , KindSignatures
+                            , TypeOperators
+                            , TypeApplications
+                            , GADTs
+                            , NamedFieldPuns
+                            , InstanceSigs
+                            , TypeSynonymInstances
+                            , MultiParamTypeClasses
+                            , FunctionalDependencies
+                            , ConstrainedClassMethods
+                            , InstanceSigs
+                            , FlexibleInstances
+                            , FlexibleContexts
+                            , BangPatterns
+                            , ViewPatterns
+                            , PatternGuards
+                            , MultiWayIf
+                            , EmptyCase
+                            , LambdaCase
+
+
+source-repository head
+  type:     git
+  location: https://github.com/leshow/i3ipc
