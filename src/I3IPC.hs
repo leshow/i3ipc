@@ -2,6 +2,7 @@ module I3IPC
     ( module Msg
     , module Sub
     , module Evt
+    , module Reply
     , getSocketPath
     , subscribe
     , receive
@@ -11,12 +12,10 @@ where
 import qualified I3IPC.Message                      as Msg
 import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
+import qualified I3IPC.Reply                        as Reply
 
 import           System.Environment                  ( lookupEnv )
-import           Data.Maybe                          ( isJust
-                                                     , isNothing
-                                                     , fromJust
-                                                     )
+import           Data.Maybe                          ( isJust )
 import           System.Process.Typed                ( proc
                                                      , readProcess
                                                      )
@@ -67,6 +66,8 @@ subscribe subtypes = do
             handleSoc soc
             close soc
     where handleSoc soc = undefined
+        -- Just (t, b) <- receive soc
+
 
 data Reply = Reply {
     len :: !Word32
@@ -87,9 +88,7 @@ receive soc = do
             let replyType = if testBit rType 31
                     then Event (toEnum (rType `clearBit` 31))
                     else Message (toEnum rType)
-            pure $ do
-                body <- decode msgbody
-                pure (replyType, body)
+            pure $ (replyType, ) <$> decode msgbody
         else pure Nothing
 
 getReply :: Get Reply
