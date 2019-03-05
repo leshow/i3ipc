@@ -1,5 +1,5 @@
 module I3IPC.Event
-    ( EventType
+    ( EventType(..)
     )
 where
 

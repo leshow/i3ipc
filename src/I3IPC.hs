@@ -1,11 +1,17 @@
 module I3IPC
-    ( getSocketPath
-    , run
+    ( module Msg
+    , module Sub
+    , module Evt
+    , getSocketPath
+    , subscribe
+    , receive
     )
 where
 
-import           I3IPC.Message
-import           I3IPC.Subscribe
+import qualified I3IPC.Message                      as Msg
+import qualified I3IPC.Subscribe                    as Sub
+import qualified I3IPC.Event                        as Evt
+
 import           System.Environment                  ( lookupEnv )
 import           Data.Maybe                          ( isJust
                                                      , isNothing
@@ -18,9 +24,22 @@ import           System.Exit                         ( ExitCode(..)
                                                      , exitFailure
                                                      )
 import qualified Data.ByteString.Lazy.Char8         as BSL
-import           Network.Socket
-import           Control.Monad.Trans                 ( liftIO )
-
+import qualified Data.ByteString                    as BS
+import           Network.Socket               hiding ( send
+                                                     , sendTo
+                                                     , recv
+                                                     , recvFrom
+                                                     )
+import           Network.Socket.ByteString.Lazy
+import           Data.Aeson                          ( encode
+                                                     , decode
+                                                     , Value
+                                                     )
+import           Data.Binary.Get
+import           Data.Bits                           ( testBit
+                                                     , clearBit
+                                                     )
+import           Data.Word
 
 getSocketPath :: IO (Maybe BSL.ByteString)
 getSocketPath = do
@@ -36,17 +55,46 @@ getSocketPath = do
 
 -- | Subscribe to i3 msgs of the specific 'ReplyType'
 --
-subscribe :: [Subscribe] -> IO ()
+subscribe :: [Sub.Subscribe] -> IO ()
 subscribe subtypes = do
-    soc  <- liftIO $ socket AF_UNIX Stream 0
-    addr <- liftIO getSocketPath
+    soc  <- socket AF_UNIX Stream 0
+    addr <- getSocketPath
     case addr of
-        Nothing -> do
-            putStrLn "Failed to get i3 socket path"
-            exitFailure
+        Nothing    -> putStrLn "Failed to get i3 socket path" >> exitFailure
         Just addr' -> do
-            liftIO $ connect soc (SockAddrUnix $ BSL.unpack addr')
-            liftIO $ sendMsg soc Subscribe subtypes
-            pure ()
+            connect soc (SockAddrUnix $ BSL.unpack addr')
+            Msg.sendMsg soc Msg.Subscribe (encode subtypes)
+            handleSoc soc
+            close soc
+    where handleSoc soc = undefined
 
+data Reply = Reply {
+    len :: !Word32
+    , msgtype :: !Word32
+    , body :: BS.ByteString
+} deriving (Show)
 
+data ReplyType = Message Msg.MessageType | Event Evt.EventType deriving (Show, Eq)
+
+receive :: Socket -> IO (Maybe (ReplyType, Value))
+receive soc = do
+    magic <- recv soc 6
+    if magic == "i3-ipc"
+        then do
+            msglen  <- fromIntegral . runGet getWord32le <$> recv soc 4
+            rType   <- fromIntegral . runGet getWord32le <$> recv soc 4
+            msgbody <- recv soc msglen
+            let replyType = if testBit rType 31
+                    then Event (toEnum (rType `clearBit` 31))
+                    else Message (toEnum rType)
+            pure $ do
+                body <- decode msgbody
+                pure (replyType, body)
+        else pure Nothing
+
+getReply :: Get Reply
+getReply = do
+    len     <- getWord32le
+    msgtype <- getWord32le
+    body    <- getByteString (fromIntegral len)
+    return $! Reply len msgtype body

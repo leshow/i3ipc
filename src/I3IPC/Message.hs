@@ -1,5 +1,5 @@
 module I3IPC.Message
-    ( MessageType
+    ( MessageType(..)
     , createMsg
     , sendMsg
     )

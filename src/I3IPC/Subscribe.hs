@@ -1,7 +1,10 @@
 module I3IPC.Subscribe
-    ( Subscribe
+    ( Subscribe(..)
     )
 where
+
+import           GHC.Generics
+import           Data.Aeson
 
 -- | Subscribe from i3 have the following types (https://i3wm.org/docs/ipc.html#_events)
 data Subscribe =
@@ -21,7 +24,17 @@ data Subscribe =
     | Shutdown
     -- | Sent when the ipc client subscribes to the tick event (with "first": true) or when any ipc client sends a SEND_TICK message (with "first": false).  
     | Tick
-    deriving (Enum, Eq)
+    deriving (Enum, Eq, Generic)
+
+instance ToJSON Subscribe where
+    toJSON Workspace       = "workspace"
+    toJSON Output          = "output"
+    toJSON Mode            = "mode"
+    toJSON Window          = "window"
+    toJSON BarConfigUpdate = "barconfig_update"
+    toJSON Binding         = "binding"
+    toJSON Shutdown        = "shutdown"
+    toJSON Tick            = "tick"
 
 instance Show Subscribe where
     show Workspace       = "workspace"
