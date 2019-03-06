@@ -2,7 +2,6 @@ module I3IPC
     ( module Msg
     , module Sub
     , module Evt
-    , module Reply
     , getSocketPath
     , subscribe
     , receive
@@ -12,7 +11,7 @@ where
 import qualified I3IPC.Message                      as Msg
 import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
-import qualified I3IPC.Reply                        as Reply
+import I3IPC.Reply                        
 
 import           System.Environment                  ( lookupEnv )
 import           Data.Maybe                          ( isJust )
