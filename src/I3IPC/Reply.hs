@@ -11,6 +11,7 @@ module I3IPC.Reply
 where
 
 import           GHC.Generics
+import           Control.Monad                       ( mzero )
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Aeson.Encoding                 ( text )
@@ -20,50 +21,83 @@ import           Data.Text                           ( Text )
 
 -- | Command Reply
 data Command = Command {
-    success :: !Bool
+    cmd_success :: !Bool
 } deriving (Eq, Show, Generic)
 
 instance ToJSON Command where
-    toEncoding = genericToEncoding defaultOptions
+    toEncoding Command { cmd_success } = pairs ("success" .= cmd_success)
 
-instance FromJSON Command
+instance FromJSON Command where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
 
 -- | Workspaces Reply
 data Workspace = Workspace {
-    wsNum :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
-    , wsName :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
-    , wsVisible :: !Bool -- ^ Whether this workspace is currently visible on an output (multiple workspaces can be visible at the same time). 
-    , wsFocused :: !Bool -- ^ Whether this workspace currently has the focus (only one workspace can have the focus at the same time).
-    , wsUrgent :: !Bool -- ^ Whether a window on this workspace has the "urgent" flag set. 
-    , wsRect :: !Rect -- ^ The rectangle of this workspace (equals the rect of the output it is on), consists of x, y, width, height. 
-    , wsOutput :: !Text -- ^ The video output this workspace is on (LVDS1, VGA1, …). 
+    ws_num :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
+    , ws_name :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
+    , ws_visible :: !Bool -- ^ Whether this workspace is currently visible on an output (multiple workspaces can be visible at the same time). 
+    , ws_focused :: !Bool -- ^ Whether this workspace currently has the focus (only one workspace can have the focus at the same time).
+    , ws_urgent :: !Bool -- ^ Whether a window on this workspace has the "urgent" flag set. 
+    , ws_rect :: !Rect -- ^ The rectangle of this workspace (equals the rect of the output it is on), consists of x, y, width, height. 
+    , ws_output :: !Text -- ^ The video output this workspace is on (LVDS1, VGA1, …). 
 } deriving (Eq, Generic, Show)
 
 instance ToJSON Workspace where
-    toJSON Workspace {..} = object
-        [ "num" .= wsNum
-        , "name" .= wsName
-        , "visible" .= wsVisible
-        , "focused" .= wsFocused
-        , "urgent" .= wsUrgent
-        , "rect" .= wsRect
-        , "output" .= wsOutput
-        ]
+    toEncoding Workspace {..} = pairs
+        ( "num" .= ws_num
+        <> "name" .= ws_name
+        <> "visible" .= ws_visible
+        <> "focused" .= ws_focused
+        <> "urgent" .= ws_urgent
+        <> "rect" .= ws_rect
+        <> "output" .= ws_output
+        )
 
 instance FromJSON Workspace where
     parseJSON = withObject "Workspaces" $ \o -> do
-        wsNum     <- o .: "num"
-        wsName    <- o .: "name"
-        wsVisible <- o .: "visible"
-        wsFocused <- o .: "focused"
-        wsUrgent  <- o .: "urgent"
-        wsRect    <- o .: "rect"
-        wsOutput  <- o .: "output"
-        pure Workspace { .. }
+        ws_num     <- o .: "num"
+        ws_name    <- o .: "name"
+        ws_visible <- o .: "visible"
+        ws_focused <- o .: "focused"
+        ws_urgent  <- o .: "urgent"
+        ws_rect    <- o .: "rect"
+        ws_output  <- o .: "output"
+        pure $! Workspace { .. }
+
+-- | Subscribe Reply
+data Subscribe = Subscribe {
+    sub_success :: !Bool
+} deriving (Eq, Show, Generic)
+
+instance ToJSON Subscribe where
+    toEncoding Subscribe { sub_success } = pairs ("success" .= sub_success)
+
+instance FromJSON Subscribe where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+-- | Outputs Reply
+data Outputs = Outputs {
+    output_name :: !Text
+    , output_active :: !Bool
+    , output_primary :: !Bool
+    , output_current_workspace :: !Text
+    , output_rect :: !Rect
+} deriving (Eq, Show, Generic)
+
+instance ToJSON Outputs where
+    toEncoding Outputs { .. } = pairs 
+        ( "name" .= output_name 
+        <> "active" .= output_active 
+        <> "primary" .= output_primary
+        <> "current_workspace" .= output_current_workspace
+        <> "rect" .= output_rect
+        )
+
+instance FromJSON Outputs where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 7 }
 
 -- | Tree Reply
 data Node = Node {
-    id :: !Int64 -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
+    node_id :: !Int64 -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
     , name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
     , nodetype :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
     , border :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
@@ -85,7 +119,7 @@ data Node = Node {
 
 instance FromJSON Node where
     parseJSON = withObject "Node" $ \o -> do
-        id                   <- o .: "id"
+        node_id                   <- o .: "id"
         name                 <- o .:? "name"
         nodetype             <- o .: "type"
         border               <- o .: "border"
@@ -103,7 +137,7 @@ instance FromJSON Node where
         focus                <- o .: "focus"
         nodes                <- o .: "nodes"
         floating_nodes       <- o .: "floating_nodes"
-        pure Node { .. }
+        pure $! Node { .. }
 
 data NodeBorder =
     Normal
@@ -118,12 +152,12 @@ instance ToJSON NodeBorder where
         Pixel  -> text "pixel"
 
 instance FromJSON NodeBorder where
-    parseJSON (String s) = pure $ case s of
+    parseJSON (String s) = pure $! case s of
         "normal" -> Normal
         "none"   -> None
         "pixel"  -> Pixel
         _        -> error "Unrecognized NodeBorder found"
-    parseJSON _ = error "Error parsing NodeBorder"
+    parseJSON _ = mzero
 
 data Rect = Rect {
     x :: !Int32
@@ -156,7 +190,7 @@ instance ToJSON NodeType where
         DockAreaType    -> text "dockarea"
 
 instance FromJSON NodeType where
-    parseJSON (String s) = pure $ case s of
+    parseJSON (String s) = pure $! case s of
         "root"         -> RootType
         "output"       -> OutputType
         "con"          -> ConType
@@ -164,7 +198,7 @@ instance FromJSON NodeType where
         "workspace"    -> WorkspaceType
         "dockarea"     -> DockAreaType
         _              -> error "Received unrecognized NodeType"
-    parseJSON _ = error "Error parsing NodeType"
+    parseJSON _ = mzero
 
 data NodeLayout =
     SplitHorizontalLayout
@@ -185,7 +219,7 @@ instance ToJSON NodeLayout where
         OutputLayout          -> text "output"
 
 instance FromJSON NodeLayout where
-    parseJSON (String s) = pure $ case s of
+    parseJSON (String s) = pure $! case s of
         "splith"   -> SplitHorizontalLayout
         "splitv"   -> SplitVerticalLayout
         "stacked"  -> StackedLayout
@@ -193,6 +227,6 @@ instance FromJSON NodeLayout where
         "dockarea" -> DockAreaLayout
         "output"   -> OutputLayout
         _          -> error "Received unrecognized NodeLayout"
-    parseJSON _ = error "Error parsing NodeLayout"
+    parseJSON _ = mzero
 
 -- | BarConfig Reply

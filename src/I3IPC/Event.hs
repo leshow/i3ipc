@@ -7,6 +7,7 @@ where
 
 import           I3IPC.Reply
 
+import           Control.Monad                       ( mzero )
 import           GHC.Generics
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
@@ -55,7 +56,7 @@ instance ToJSON WorkspaceChange where
         Move     -> text "move"
 
 instance FromJSON WorkspaceChange where
-    parseJSON (String s) = pure $ case s of
+    parseJSON (String s) = pure $! case s of
         "focus"    -> Focus
         "init"     -> Init
         "empty"    -> Empty
@@ -65,7 +66,7 @@ instance FromJSON WorkspaceChange where
         "restored" -> Restored
         "move"     -> Move
         _          -> error "Received unrecognized WorkspaceChange"
-    parseJSON _ = error "Error parsing WorkspaceChange"
+    parseJSON _ = mzero
 
 data WorkspaceEvent = WorkspaceEvent {
     change :: !WorkspaceChange

@@ -5,6 +5,8 @@ where
 
 import           GHC.Generics
 import           Data.Aeson
+import           Data.Aeson.Encoding                 ( text )
+
 
 -- | Subscribe from i3 have the following types (https://i3wm.org/docs/ipc.html#_events)
 data Subscribe =
@@ -24,24 +26,15 @@ data Subscribe =
     | Shutdown
     -- | Sent when the ipc client subscribes to the tick event (with "first": true) or when any ipc client sends a SEND_TICK message (with "first": false).  
     | Tick
-    deriving (Enum, Eq, Generic)
+    deriving (Enum, Eq, Generic, Show)
 
 instance ToJSON Subscribe where
-    toJSON Workspace       = "workspace"
-    toJSON Output          = "output"
-    toJSON Mode            = "mode"
-    toJSON Window          = "window"
-    toJSON BarConfigUpdate = "barconfig_update"
-    toJSON Binding         = "binding"
-    toJSON Shutdown        = "shutdown"
-    toJSON Tick            = "tick"
-
-instance Show Subscribe where
-    show Workspace       = "workspace"
-    show Output          = "output"
-    show Mode            = "mode"
-    show Window          = "window"
-    show BarConfigUpdate = "barconfig_update"
-    show Binding         = "binding"
-    show Shutdown        = "shutdown"
-    show Tick            = "tick"
+    toEncoding = \case
+        Workspace       -> text "workspace"
+        Output          -> text "output"
+        Mode            -> text "mode"
+        Window          -> text "window"
+        BarConfigUpdate -> text "barconfig_update"
+        Binding         -> text "binding"
+        Shutdown        -> text "shutdown"
+        Tick            -> text "tick"
