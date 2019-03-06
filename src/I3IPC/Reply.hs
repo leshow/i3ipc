@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 module I3IPC.Reply where
 
 import           GHC.Generics
@@ -11,6 +10,7 @@ import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
 
 -- | Command Reply
+-- The reply consists of a list of serialized maps for each command that was parsed. Each has the property success (bool) and may also include a human-readable error message in the property error (string).
 data CommandReply = CommandReply {
     cmd_success :: !Bool
 } deriving (Eq, Show, Generic)
@@ -23,6 +23,7 @@ instance FromJSON CommandReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
 
 -- | Workspaces Reply
+-- The reply consists of a serialized list of workspaces. 
 data WorkspaceReply = WorkspaceReply {
     ws_num :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
     , ws_name :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
@@ -41,6 +42,7 @@ instance FromJSON WorkspaceReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 }
 
 -- | Subscribe Reply
+-- The reply consists of a single serialized map. The only property is success (bool), indicating whether the subscription was successful (the default) or whether a JSON parse error occurred.
 data SubscribeReply = SubscribeReply {
     sub_success :: !Bool
 } deriving (Eq, Show, Generic)
@@ -53,6 +55,7 @@ instance FromJSON SubscribeReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
 
 -- | Outputs Reply
+-- The reply consists of a serialized list of outputs. 
 data OutputsReply = OutputsReply {
     output_name :: !Text
     , output_active :: !Bool
@@ -69,6 +72,7 @@ instance FromJSON OutputsReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 7 }
 
 -- | Tree Reply
+-- The reply consists of a serialized tree. Each node in the tree (representing one container) has at least the properties listed below. While the nodes might have more properties, please do not use any properties which are not documented here. They are not yet finalized and will probably change!
 data Node = Node {
     node_id :: !Int64 -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
     , node_name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
@@ -141,6 +145,8 @@ instance ToJSON WindowProperty where
         TransientFor -> text "transient_for"
 
 -- | Marks Reply
+-- The reply consists of a single array of strings for each container that has a mark. A mark can only be set on one container, so the array is unique. The order of that array is undefined.
+-- If no window has a mark the response will be the empty array [].
 data MarksReply = MarksReply {
     marks :: !(Vector Text)
 } deriving (Eq, Generic, Show, FromJSON)
@@ -237,6 +243,7 @@ instance FromJSON NodeLayout where
     parseJSON _ = mzero
 
 -- | BarConfig Reply
+-- This can be used by third-party workspace bars (especially i3bar, but others are free to implement compatible alternatives) to get the bar block configuration from i3.
 data BarConfigReply = BarConfigReply {
     bar_id :: !Text
     , bar_mode :: !Text
@@ -393,4 +400,46 @@ instance ToJSON VersionReply where
         genericToEncoding defaultOptions { fieldLabelModifier = drop 2 }
 
 instance FromJSON VersionReply where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 2 }
+
+-- | BindingModes Reply
+-- The reply consists of an array of all currently configured binding modes.
+data BindingModesReply = BindingModesReply {
+    bm_mode :: !(Vector Text)
+} deriving (Eq, Generic, Show)
+
+instance ToJSON BindingModesReply where
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 3 }
+
+instance FromJSON BindingModesReply where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 }
+
+-- | Config Reply
+-- The config reply is a map which currently only contains the "config" member, which is a string containing the config file as loaded by i3 most recently.
+data ConfigReply = ConfigReply {
+    c_config :: !Text
+} deriving (Eq, Generic, Show)
+
+
+instance ToJSON ConfigReply where
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 2 }
+
+instance FromJSON ConfigReply where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 2 }
+
+-- | Sync Reply
+-- The reply is a map containing the "success" member. After the reply was received, the i3 sync message was responded to.
+data SyncReply = SyncReply {
+    sync_success :: !Bool
+} deriving (Eq, Generic, Show)
+
+instance ToJSON SyncReply where
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
+
+instance FromJSON SyncReply where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
+
+

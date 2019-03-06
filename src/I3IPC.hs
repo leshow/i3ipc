@@ -95,4 +95,4 @@ getReply = do
     len     <- getWord32le
     msgtype <- getWord32le
     body    <- getByteString (fromIntegral len)
-    return $! Reply len msgtype body
+    pure $! Reply len msgtype body
