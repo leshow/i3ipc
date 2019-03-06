@@ -1,12 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 module I3IPC.Reply
-    ( Node
+    ( Node(..)
     , NodeBorder(..)
-    , Rect
+    , Rect(..)
     , NodeType(..)
     , NodeLayout(..)
-    , Command
-    , Workspace
+    , Command(..)
+    , Workspace(..)
+    , BarConfig(..)
+    , BarPart(..)
+    , Subscribe(..)
     )
 where
 
@@ -16,6 +19,7 @@ import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Aeson.Encoding                 ( text )
 import           Data.Int
+import           Data.Map.Strict                     ( Map )
 import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
 
@@ -25,7 +29,8 @@ data Command = Command {
 } deriving (Eq, Show, Generic)
 
 instance ToJSON Command where
-    toEncoding Command { cmd_success } = pairs ("success" .= cmd_success)
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
 
 instance FromJSON Command where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
@@ -43,13 +48,20 @@ data Workspace = Workspace {
 
 instance ToJSON Workspace where
     toEncoding Workspace {..} = pairs
-        ( "num" .= ws_num
-        <> "name" .= ws_name
-        <> "visible" .= ws_visible
-        <> "focused" .= ws_focused
-        <> "urgent" .= ws_urgent
-        <> "rect" .= ws_rect
-        <> "output" .= ws_output
+        (  "num"
+        .= ws_num
+        <> "name"
+        .= ws_name
+        <> "visible"
+        .= ws_visible
+        <> "focused"
+        .= ws_focused
+        <> "urgent"
+        .= ws_urgent
+        <> "rect"
+        .= ws_rect
+        <> "output"
+        .= ws_output
         )
 
 instance FromJSON Workspace where
@@ -69,7 +81,8 @@ data Subscribe = Subscribe {
 } deriving (Eq, Show, Generic)
 
 instance ToJSON Subscribe where
-    toEncoding Subscribe { sub_success } = pairs ("success" .= sub_success)
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
 
 instance FromJSON Subscribe where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
@@ -84,13 +97,8 @@ data Outputs = Outputs {
 } deriving (Eq, Show, Generic)
 
 instance ToJSON Outputs where
-    toEncoding Outputs { .. } = pairs 
-        ( "name" .= output_name 
-        <> "active" .= output_active 
-        <> "primary" .= output_primary
-        <> "current_workspace" .= output_current_workspace
-        <> "rect" .= output_rect
-        )
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 7 }
 
 instance FromJSON Outputs where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 7 }
@@ -119,7 +127,7 @@ data Node = Node {
 
 instance FromJSON Node where
     parseJSON = withObject "Node" $ \o -> do
-        node_id                   <- o .: "id"
+        node_id              <- o .: "id"
         name                 <- o .:? "name"
         nodetype             <- o .: "type"
         border               <- o .: "border"
@@ -138,6 +146,14 @@ instance FromJSON Node where
         nodes                <- o .: "nodes"
         floating_nodes       <- o .: "floating_nodes"
         pure $! Node { .. }
+
+-- | Marks Reply
+data Marks = Marks {
+    marks :: !(Vector Text)
+} deriving (Eq, Generic, Show, FromJSON)
+
+instance ToJSON Marks where
+    toEncoding = genericToEncoding defaultOptions
 
 data NodeBorder =
     Normal
@@ -164,12 +180,10 @@ data Rect = Rect {
     , y :: !Int32
     , width :: !Int32
     , height :: !Int32
-} deriving (Eq, Generic, Show)
+} deriving (Eq, Generic, Show, FromJSON)
 
 instance ToJSON Rect where
     toEncoding = genericToEncoding defaultOptions
-
-instance FromJSON Rect
 
 data NodeType =
     RootType
@@ -230,3 +244,165 @@ instance FromJSON NodeLayout where
     parseJSON _ = mzero
 
 -- | BarConfig Reply
+data BarConfig = BarConfig {
+    bar_id :: !Text
+    , bar_mode :: !Text
+    , bar_position :: !Text
+    , bar_status_command :: !Text
+    , bar_font :: !Text
+    , bar_workspace_buttons :: !Bool
+    , bar_binding_mode_indicator :: !Bool
+    , bar_verbose :: !Bool
+    , bar_colors :: !(Map BarPart Text)
+} deriving (Eq, Generic, Show)
+
+instance ToJSON BarConfig where
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
+    -- toEncoding BarConfig {..} = pairs
+    --     (  "id"
+    --     .= bar_id
+    --     <> "mode"
+    --     .= bar_mode
+    --     <> "position"
+    --     .= bar_position
+    --     <> "status_command"
+    --     .= bar_status_command
+    --     <> "font"
+    --     .= bar_font
+    --     <> "workspace_buttons"
+    --     .= bar_workspace_buttons
+    --     <> "binding_mode_indicator"
+    --     .= bar_binding_mode_indicator
+    --     <> "verbose"
+    --     .= bar_verbose
+    --     <> "colors"
+    --     .= bar_colors
+    --     )
+
+instance FromJSON BarConfig where
+    parseJSON =
+        genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+data BarPart =
+    Background
+    | Statusline
+    | Separator
+    | FocusedBackground
+    | FocusedStatusline
+    | FocusedSeparator
+    | FocusedWorkspaceText
+    | FocusedWorkspaceBg
+    | FocusedWorkspaceBorder
+    | ActiveWorkspaceText
+    | ActiveWorkspaceBg
+    | ActiveWorkspaceBorder
+    | InactiveWorkspaceText
+    | InactiveWorkspaceBg
+    | InactiveWorkspaceBorder
+    | UrgentWorkspaceText
+    | UrgentWorkspaceBg
+    | UrgentWorkspaceBorder
+    | BindingModeText
+    | BindingModeBg
+    | BindingModeBorder
+    deriving (Eq, Enum, Ord, Generic, Show, FromJSONKey)
+
+instance ToJSONKey BarPart where
+    toJSONKey = ToJSONKeyText f g
+      where
+        f x = case x of
+            Background              -> "background"
+            Statusline              -> "statusline"
+            Separator               -> "separator"
+            FocusedBackground       -> "focused_background"
+            FocusedStatusline       -> "focused_statusline"
+            FocusedSeparator        -> "focused_separator"
+            FocusedWorkspaceText    -> "focused_workspace_text"
+            FocusedWorkspaceBg      -> "focused_workspace_bg"
+            FocusedWorkspaceBorder  -> "focused_workspace_border"
+            ActiveWorkspaceText     -> "active_workspace_text"
+            ActiveWorkspaceBg       -> "active_workspace_bg"
+            ActiveWorkspaceBorder   -> "active_workspace_border"
+            InactiveWorkspaceText   -> "inactive_workspace_text"
+            InactiveWorkspaceBg     -> "inactive_workspace_bg"
+            InactiveWorkspaceBorder -> "inactive_workspace_border"
+            UrgentWorkspaceText     -> "urgent_workspace_text"
+            UrgentWorkspaceBg       -> "urgent_workspace_bg"
+            UrgentWorkspaceBorder   -> "urgent_workspace_border"
+            BindingModeText         -> "binding_mode_text"
+            BindingModeBg           -> "binding_mode_bg"
+            BindingModeBorder       -> "binding_mode_border"
+        g x = case x of
+            Background              -> text "background"
+            Statusline              -> text "statusline"
+            Separator               -> text "separator"
+            FocusedBackground       -> text "focused_background"
+            FocusedStatusline       -> text "focused_statusline"
+            FocusedSeparator        -> text "focused_separator"
+            FocusedWorkspaceText    -> text "focused_workspace_text"
+            FocusedWorkspaceBg      -> text "focused_workspace_bg"
+            FocusedWorkspaceBorder  -> text "focused_workspace_border"
+            ActiveWorkspaceText     -> text "active_workspace_text"
+            ActiveWorkspaceBg       -> text "active_workspace_bg"
+            ActiveWorkspaceBorder   -> text "active_workspace_border"
+            InactiveWorkspaceText   -> text "inactive_workspace_text"
+            InactiveWorkspaceBg     -> text "inactive_workspace_bg"
+            InactiveWorkspaceBorder -> text "inactive_workspace_border"
+            UrgentWorkspaceText     -> text "urgent_workspace_text"
+            UrgentWorkspaceBg       -> text "urgent_workspace_bg"
+            UrgentWorkspaceBorder   -> text "urgent_workspace_border"
+            BindingModeText         -> text "binding_mode_text"
+            BindingModeBg           -> text "binding_mode_bg"
+            BindingModeBorder       -> text "binding_mode_border"
+
+instance FromJSON BarPart where
+    parseJSON (String s) = pure $! case s of
+        "background"                -> Background
+        "statusline"                -> Statusline
+        "separator"                 -> Separator
+        "focused_background"        -> FocusedBackground
+        "focused_statusline"        -> FocusedStatusline
+        "focused_separator"         -> FocusedSeparator
+        "focused_workspace_text"    -> FocusedWorkspaceText
+        "focused_workspace_bg"      -> FocusedWorkspaceBg
+        "focused_workspace_border"  -> FocusedWorkspaceBorder
+        "active_workspace_text"     -> ActiveWorkspaceText
+        "active_workspace_bg"       -> ActiveWorkspaceBg
+        "active_workspace_border"   -> ActiveWorkspaceBorder
+        "inactive_workspace_text"   -> InactiveWorkspaceText
+        "inactive_workspace_bg"     -> InactiveWorkspaceBg
+        "inactive_workspace_border" -> InactiveWorkspaceBorder
+        "urgent_workspace_text"     -> UrgentWorkspaceText
+        "urgent_workspace_bg"       -> UrgentWorkspaceBg
+        "urgent_workspace_border"   -> UrgentWorkspaceBorder
+        "binding_mode_text"         -> BindingModeText
+        "binding_mode_bg"           -> BindingModeBg
+        "binding_mode_border"       -> BindingModeBorder
+        _ -> error "Unrecognized BarPart variant found"
+    parseJSON _ = mzero
+
+
+instance ToJSON BarPart where
+    toEncoding = \case
+        Background              -> text "background"
+        Statusline              -> text "statusline"
+        Separator               -> text "separator"
+        FocusedBackground       -> text "focused_background"
+        FocusedStatusline       -> text "focused_statusline"
+        FocusedSeparator        -> text "focused_separator"
+        FocusedWorkspaceText    -> text "focused_workspace_text"
+        FocusedWorkspaceBg      -> text "focused_workspace_bg"
+        FocusedWorkspaceBorder  -> text "focused_workspace_border"
+        ActiveWorkspaceText     -> text "active_workspace_text"
+        ActiveWorkspaceBg       -> text "active_workspace_bg"
+        ActiveWorkspaceBorder   -> text "active_workspace_border"
+        InactiveWorkspaceText   -> text "inactive_workspace_text"
+        InactiveWorkspaceBg     -> text "inactive_workspace_bg"
+        InactiveWorkspaceBorder -> text "inactive_workspace_border"
+        UrgentWorkspaceText     -> text "urgent_workspace_text"
+        UrgentWorkspaceBg       -> text "urgent_workspace_bg"
+        UrgentWorkspaceBorder   -> text "urgent_workspace_border"
+        BindingModeText         -> text "binding_mode_text"
+        BindingModeBg           -> text "binding_mode_bg"
+        BindingModeBorder       -> text "binding_mode_border"
