@@ -1,7 +1,9 @@
 module I3IPC.Message
     ( MessageType(..)
     , createMsg
+    , createMsg'
     , sendMsg
+    , sendMsg'
     )
 where
 
@@ -9,6 +11,7 @@ import           Network.Socket.ByteString.Lazy
 import           Network.Socket                      ( Socket )
 import qualified Data.ByteString.Lazy               as BSL
 import           Data.Binary.Put
+import Data.Function ((&))
 import           Data.Int
 
 -- | I3 IPC Commands https://i3wm.org/docs/ipc.html#_sending_messages_to_i3
@@ -49,6 +52,17 @@ createMsg msgtype msg = runPut $ do
     putWord32host $ fromIntegral (fromEnum msgtype)
     putLazyByteString msg
 
-
+-- | Create a msg for i3 based on 'MessageType' without a message body, based on 'createMsg'
+createMsg' :: MessageType -> BSL.ByteString
+createMsg' msgtype = runPut $ do
+    putByteString "i3-ipc"
+    putWord32host $ fromIntegral @Int 0
+    putWord32host $ fromIntegral (fromEnum msgtype)
+    
+-- | Send a message over the socket of 'MessageType' and some content
 sendMsg :: Socket -> MessageType -> BSL.ByteString -> IO Int64
-sendMsg soc msgtype msg = send soc (createMsg msgtype msg)
+sendMsg soc msgtype msg = createMsg msgtype msg & send soc
+
+-- | Similar to 'sendMsg' but with no message body
+sendMsg' :: Socket -> MessageType -> IO Int64
+sendMsg' soc msgtype = createMsg' msgtype & send soc

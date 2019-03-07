@@ -1,26 +1,66 @@
+{-# LANGUAGE RecordWildCards #-}
 module I3IPC.Reply where
 
 import           GHC.Generics
 import           Control.Monad                       ( mzero )
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
+import qualified Data.ByteString.Lazy as BL
 import           Data.Int
 import           Data.Map.Strict                     ( Map )
 import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
 
--- | Command Reply
--- The reply consists of a list of serialized maps for each command that was parsed. Each has the property success (bool) and may also include a human-readable error message in the property error (string).
-data CommandReply = CommandReply {
-    cmd_success :: !Bool
-} deriving (Eq, Show, Generic)
+data MsgReply =
+    -- | Run the payload as an i3 command (like the commands you can bind to keys).
+    RunCommand !Success
+    -- | Get the list of current workspaces. 
+    | Workspaces !WorkspaceReply
+    -- | Subscribe this IPC connection to the event types specified in the message payload. 
+    | Subscribe !Success 
+    -- | Get the list of current outputs.
+    | Outputs !OutputsReply
+    -- | Get the i3 layout tree.
+    | Tree !Node
+    -- | Gets the names of all currently set marks.
+    | Marks !MarksReply
+    -- | Gets the specified bar configuration or the names of all bar configurations if payload is empty.
+    | BarConfig !BarConfigReply
+    -- | Gets the i3 version.
+    | Version !VersionReply
+    -- |  Gets the names of all currently configured binding modes.
+    | BindingModes !BindingModesReply
+    -- | Returns the last loaded i3 config. 
+    | Config !ConfigReply
+    -- |  Sends a tick event with the specified payload.
+    | Tick !Success
+    -- | Sends an i3 sync event with the specified random value to the specified window.
+    | Sync !Success
+    deriving (Show, Eq)
 
-instance ToJSON CommandReply where
-    toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
+toMsgReply :: Int -> BL.ByteString -> Maybe MsgReply
+toMsgReply 0 = (RunCommand <$>) . decode
+toMsgReply 1 = (Workspaces <$>) . decode
+toMsgReply 2 = (Subscribe <$>) . decode
+toMsgReply 3 = (Outputs <$>) . decode
+toMsgReply 4 = (Tree <$>) . decode
+toMsgReply 5 = (Marks <$>) . decode
+toMsgReply 6 = (BarConfig <$>) . decode
+toMsgReply 7 = (Version <$>) . decode
+toMsgReply 8 = (BindingModes <$>) . decode
+toMsgReply 9 = (Config <$>) . decode
+toMsgReply 10 = (Tick <$>) . decode
+toMsgReply 11 = (Sync <$>) . decode
+toMsgReply _ = error "Unknown Event type found"
 
-instance FromJSON CommandReply where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
+-- | Success Reply
+-- used for Sync, Subscribe, Command, Tick
+data Success = Success {
+    success :: !Bool
+} deriving (Eq, Show, Generic, FromJSON)
+
+instance ToJSON Success where
+    toEncoding = genericToEncoding defaultOptions 
 
 -- | Workspaces Reply
 -- The reply consists of a serialized list of workspaces. 
@@ -40,19 +80,6 @@ instance ToJSON WorkspaceReply where
 
 instance FromJSON WorkspaceReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 }
-
--- | Subscribe Reply
--- The reply consists of a single serialized map. The only property is success (bool), indicating whether the subscription was successful (the default) or whether a JSON parse error occurred.
-data SubscribeReply = SubscribeReply {
-    sub_success :: !Bool
-} deriving (Eq, Show, Generic)
-
-instance ToJSON SubscribeReply where
-    toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
-
-instance FromJSON SubscribeReply where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
 
 -- | Outputs Reply
 -- The reply consists of a serialized list of outputs. 
@@ -74,7 +101,7 @@ instance FromJSON OutputsReply where
 -- | Tree Reply
 -- The reply consists of a serialized tree. Each node in the tree (representing one container) has at least the properties listed below. While the nodes might have more properties, please do not use any properties which are not documented here. They are not yet finalized and will probably change!
 data Node = Node {
-    node_id :: !Int64 -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
+    node_id :: !Int -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
     , node_name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
     , node_type :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
     , node_border :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
@@ -99,7 +126,27 @@ instance ToJSON Node where
         genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
 
 instance FromJSON Node where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 } 
+        -- withObject "Node" $ \o -> do
+        -- node_id <- o .: "id"
+        -- node_name <- o .:? "name"
+        -- node_type <- o .: "type"
+        -- node_border <- o .: "border"
+        -- node_current_border_width <- o .: "current_border_width"
+        -- node_layout <- o .: "layout"
+        -- node_percent <- o .:? "percent"
+        -- node_rect <- o .: "rect"
+        -- node_window_rect <- o .: "window_rect"
+        -- node_deco_rect <- o .: "deco_rect"
+        -- node_geometry <- o .: "geometry"
+        -- node_window <- o .:? "window"
+        -- node_window_properties <- o .:? "window_properties"
+        -- node_urgent <- o .: "urgent"
+        -- node_focused <- o .: "focused"
+        -- node_focus <- o .: "focus"
+        -- node_nodes <- o .: "nodes"
+        -- node_floating_nodes <- o .: "floating_nodes"
+        -- pure $! Node {..}
 
 data WindowProperty =
     Title
@@ -428,18 +475,3 @@ instance ToJSON ConfigReply where
 
 instance FromJSON ConfigReply where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 2 }
-
--- | Sync Reply
--- The reply is a map containing the "success" member. After the reply was received, the i3 sync message was responded to.
-data SyncReply = SyncReply {
-    sync_success :: !Bool
-} deriving (Eq, Generic, Show)
-
-instance ToJSON SyncReply where
-    toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
-
-instance FromJSON SyncReply where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
-
-

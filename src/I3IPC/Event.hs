@@ -1,34 +1,46 @@
+{-# LANGUAGE RecordWildCards #-}
 module I3IPC.Event where
 
-import           I3IPC.Reply
+import           I3IPC.Reply (Node, BarConfigReply)
 
 import           Control.Monad                       ( mzero )
 import           GHC.Generics
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
+import qualified Data.ByteString.Lazy               as BL
 import           Data.Int
 import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
 
 -- | I3 'EventType' https://i3wm.org/docs/ipc.html#_events
-data EventType =
+data Event =
     -- | See "WorkspaceEvent" for response.  Sent when the user switches to a different workspace, when a new workspace is initialized or when a workspace is removed (because the last client vanished). 
-    Workspace
+    Workspace !WorkspaceEvent
     -- | See "OutputEvent" for response.  Sent when RandR issues a change notification (of either screens, outputs, CRTCs or output properties). 
-    | Output
+    | Output !OutputEvent
     -- | See "ModeEvent" for response.  Sent whenever i3 changes its binding mode. 
-    | Mode
+    | Mode !ModeEvent
     -- | See "WindowEvent" for response.  Sent when a client’s window is successfully reparented (that is when i3 has finished fitting it into a container), when a window received input focus or when certain properties of the window have changed. 
-    | Window
+    | Window !WindowEvent
     -- | See "BarConfigUpdateEvent" for response.  Sent when the hidden_state or mode field in the barconfig of any bar instance was updated and when the config is reloaded.
-    | BarConfigUpdate
+    | BarConfigUpdate !BarConfigUpdateEvent
     -- | See "BindingEvent" for response. Sent when a configured command binding is triggered with the keyboard or mouse 
-    | Binding
+    | Binding !BindingEvent
     -- |  See "ShutdownEvent" for response. Sent when the ipc shuts down because of a restart or exit by user command 
-    | Shutdown
+    | Shutdown !ShutdownEvent
     -- | See "TickEvent" for response. Sent when the ipc client subscribes to the tick event (with "first": true) or when any ipc client sends a SEND_TICK message (with "first": false).
-    | Tick
-    deriving (Enum, Eq, Show)
+    | Tick !TickEvent
+    deriving (Eq, Show)
+
+toEvent :: Int -> BL.ByteString -> Maybe Event
+toEvent 0 = (Workspace <$>) . decode
+toEvent 1 = (Output <$>) . decode
+toEvent 2 = (Window <$>) . decode
+toEvent 3 = (BarConfigUpdate <$>) . decode
+toEvent 4 = (Binding <$>) . decode
+toEvent 5 = (Shutdown <$>) . decode
+toEvent 6 = (Tick <$>) . decode
+toEvent _ = error "Unknown Event type found"
 
 data WorkspaceChange =
     Focus
@@ -76,10 +88,14 @@ data WorkspaceEvent = WorkspaceEvent {
 
 instance ToJSON WorkspaceEvent where
     toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 4 }
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 4, omitNothingFields = True }
 
 instance FromJSON WorkspaceEvent where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 4 }
+    parseJSON = withObject "WorkspaceEvent" $ \o -> do
+        wrk_change <- o .: "change"
+        wrk_current <- o .:? "current"
+        wrk_old <- o .:? "old"
+        pure $! WorkspaceEvent {..}
 
 -- | Output Event
 -- This event consists of a single serialized map containing a property change (string) which indicates the type of the change (currently only "unspecified").
@@ -116,7 +132,6 @@ data WindowEvent = WindowEvent {
     win_change :: !WindowChange
     , win_container :: !Node -- ^ Additionally a container (object) field will be present, which consists of the window’s parent container. Be aware that for the "new" event, the container will hold the initial name of the newly reparented window (e.g. if you run urxvt with a shell that changes the title, you will still at this point get the window title as "urxvt").
 } deriving (Eq, Show, Generic)
-
 
 instance ToJSON WindowEvent where
     toEncoding =
@@ -218,6 +233,13 @@ data ShutdownEvent = ShutdownEvent {
     shutdown_change :: !ShutdownChange
 } deriving (Eq, Show, Generic)
 
+instance FromJSON ShutdownEvent where
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 9 }
+
+instance ToJSON ShutdownEvent where
+    toEncoding =
+        genericToEncoding defaultOptions { fieldLabelModifier = drop 9 }
+
 data ShutdownChange = Restart | Exit deriving (Eq, Show, Generic)
 
 instance FromJSON ShutdownChange where
@@ -245,4 +267,3 @@ instance ToJSON TickEvent where
 
 instance FromJSON TickEvent where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
-
