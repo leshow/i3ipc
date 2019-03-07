@@ -191,7 +191,7 @@ data BindingObject = BindingObject {
 } deriving (Eq, Show, Generic)
 
 instance ToJSON BindingObject where
-    toEncoding = 
+    toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
 
 instance FromJSON BindingObject where
@@ -240,7 +240,7 @@ data TickEvent = TickEvent {
 } deriving (Eq, Show, Generic)
 
 instance ToJSON TickEvent where
-    toEncoding = 
+    toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
 
 instance FromJSON TickEvent where

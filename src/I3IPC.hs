@@ -11,8 +11,9 @@ where
 import qualified I3IPC.Message                      as Msg
 import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
-import I3IPC.Reply                        
+import           I3IPC.Reply
 
+import           Control.Monad                       ( when )
 import           System.Environment                  ( lookupEnv )
 import           Data.Maybe                          ( isJust )
 import           System.Process.Typed                ( proc
@@ -32,6 +33,7 @@ import           Network.Socket.ByteString.Lazy
 import           Data.Aeson                          ( encode
                                                      , decode
                                                      , Value
+                                                     , FromJSON
                                                      )
 import           Data.Binary.Get
 import           Data.Bits                           ( testBit
@@ -64,9 +66,10 @@ subscribe subtypes = do
             Msg.sendMsg soc Msg.Subscribe (encode subtypes)
             handleSoc soc
             close soc
-    where handleSoc soc = undefined
-        -- Just (t, b) <- receive soc
-
+  where
+    handleSoc soc = do
+        Just (t, b) <- receive soc
+        handleSoc soc
 
 data Reply = Reply {
     len :: !Word32
@@ -74,9 +77,9 @@ data Reply = Reply {
     , body :: BS.ByteString
 } deriving (Show)
 
-data ReplyType = Message Msg.MessageType | Event Evt.EventType deriving (Show, Eq)
+data ReplyType  = Message Msg.MessageType | Event Evt.EventType deriving (Show, Eq)
 
-receive :: Socket -> IO (Maybe (ReplyType, Value))
+receive :: Socket -> IO (Maybe (ReplyType, BSL.ByteString))
 receive soc = do
     magic <- recv soc 6
     if magic == "i3-ipc"
@@ -87,7 +90,7 @@ receive soc = do
             let replyType = if testBit rType 31
                     then Event (toEnum (rType `clearBit` 31))
                     else Message (toEnum rType)
-            pure $ (replyType, ) <$> decode msgbody
+            pure $ Just (replyType, msgbody)
         else pure Nothing
 
 getReply :: Get Reply
@@ -96,3 +99,9 @@ getReply = do
     msgtype <- getWord32le
     body    <- getByteString (fromIntegral len)
     pure $! Reply len msgtype body
+
+data EventReply = WorkspaceEvt Evt.WorkspaceEvent
+    | OutputEvent Evt.OutputEvent
+
+        -- Event Evt.Mode      -> decode b :: Maybe Evt.ModeEvent
+        -- Event Evt.Window    -> decode b :: Maybe Evt.WindowEvent
