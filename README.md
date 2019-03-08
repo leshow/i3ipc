@@ -10,5 +10,5 @@ import           I3IPC              ( subscribe )
 
 -- will print all events
 main :: IO ()
-main = subscribe print [Sub.Workspace, Window]
+main = subscribe print [Sub.Workspace, Sub.Window]
 ```
