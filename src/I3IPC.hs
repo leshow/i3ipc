@@ -119,7 +119,6 @@ getReply soc = do
             len  <- fromIntegral . runGet getWord32le <$> recv soc 4
             ty   <- fromIntegral . runGet getWord32le <$> recv soc 4
             body <- recv soc len
-            test ty body
             pure $ Right (ty, body)
         else pure $ Left "Failed to get reply"
 
