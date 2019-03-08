@@ -1,7 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 module I3IPC.Event where
 
-import           I3IPC.Reply (Node, BarConfigReply)
+import           I3IPC.Reply                         ( Node
+                                                     , BarConfigReply
+                                                     )
 
 import           Control.Monad                       ( mzero )
 import           GHC.Generics
@@ -32,14 +34,15 @@ data Event =
     | Tick !TickEvent
     deriving (Eq, Show)
 
-toEvent :: Int -> BL.ByteString -> Maybe Event
-toEvent 0 = (Workspace <$>) . decode
-toEvent 1 = (Output <$>) . decode
-toEvent 2 = (Window <$>) . decode
-toEvent 3 = (BarConfigUpdate <$>) . decode
-toEvent 4 = (Binding <$>) . decode
-toEvent 5 = (Shutdown <$>) . decode
-toEvent 6 = (Tick <$>) . decode
+toEvent :: Int -> BL.ByteString -> Either String Event
+toEvent 0 = (Workspace <$>) . eitherDecode'
+toEvent 1 = (Output <$>) . eitherDecode'
+toEvent 2 = (Mode <$>) . eitherDecode' 
+toEvent 3 = (Window <$>) . eitherDecode'
+toEvent 4 = (BarConfigUpdate <$>) . eitherDecode'
+toEvent 5 = (Binding <$>) . eitherDecode'
+toEvent 6 = (Shutdown <$>) . eitherDecode'
+toEvent 7 = (Tick <$>) . eitherDecode'
 toEvent _ = error "Unknown Event type found"
 
 data WorkspaceChange =
@@ -87,15 +90,16 @@ data WorkspaceEvent = WorkspaceEvent {
 } deriving (Eq, Generic, Show)
 
 instance ToJSON WorkspaceEvent where
-    toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 4, omitNothingFields = True }
+    toEncoding = genericToEncoding defaultOptions { fieldLabelModifier = drop 4
+                                                  , omitNothingFields  = True
+                                                  }
 
 instance FromJSON WorkspaceEvent where
     parseJSON = withObject "WorkspaceEvent" $ \o -> do
-        wrk_change <- o .: "change"
+        wrk_change  <- o .: "change"
         wrk_current <- o .:? "current"
-        wrk_old <- o .:? "old"
-        pure $! WorkspaceEvent {..}
+        wrk_old     <- o .:? "old"
+        pure $! WorkspaceEvent { .. }
 
 -- | Output Event
 -- This event consists of a single serialized map containing a property change (string) which indicates the type of the change (currently only "unspecified").

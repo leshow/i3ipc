@@ -1,11 +1,10 @@
-{-# LANGUAGE RecordWildCards #-}
 module I3IPC.Reply where
 
 import           GHC.Generics
 import           Control.Monad                       ( mzero )
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy               as BL
 import           Data.Int
 import           Data.Map.Strict                     ( Map )
 import           Data.Vector                         ( Vector )
@@ -17,7 +16,7 @@ data MsgReply =
     -- | Get the list of current workspaces. 
     | Workspaces !WorkspaceReply
     -- | Subscribe this IPC connection to the event types specified in the message payload. 
-    | Subscribe !Success 
+    | Subscribe !Success
     -- | Get the list of current outputs.
     | Outputs !OutputsReply
     -- | Get the i3 layout tree.
@@ -38,20 +37,20 @@ data MsgReply =
     | Sync !Success
     deriving (Show, Eq)
 
-toMsgReply :: Int -> BL.ByteString -> Maybe MsgReply
-toMsgReply 0 = (RunCommand <$>) . decode
-toMsgReply 1 = (Workspaces <$>) . decode
-toMsgReply 2 = (Subscribe <$>) . decode
-toMsgReply 3 = (Outputs <$>) . decode
-toMsgReply 4 = (Tree <$>) . decode
-toMsgReply 5 = (Marks <$>) . decode
-toMsgReply 6 = (BarConfig <$>) . decode
-toMsgReply 7 = (Version <$>) . decode
-toMsgReply 8 = (BindingModes <$>) . decode
-toMsgReply 9 = (Config <$>) . decode
-toMsgReply 10 = (Tick <$>) . decode
-toMsgReply 11 = (Sync <$>) . decode
-toMsgReply _ = error "Unknown Event type found"
+toMsgReply :: Int -> BL.ByteString -> Either String MsgReply
+toMsgReply 0  = (RunCommand <$>) . eitherDecode'
+toMsgReply 1  = (Workspaces <$>) . eitherDecode'
+toMsgReply 2  = (Subscribe <$>) . eitherDecode'
+toMsgReply 3  = (Outputs <$>) . eitherDecode'
+toMsgReply 4  = (Tree <$>) . eitherDecode'
+toMsgReply 5  = (Marks <$>) . eitherDecode'
+toMsgReply 6  = (BarConfig <$>) . eitherDecode'
+toMsgReply 7  = (Version <$>) . eitherDecode'
+toMsgReply 8  = (BindingModes <$>) . eitherDecode'
+toMsgReply 9  = (Config <$>) . eitherDecode'
+toMsgReply 10 = (Tick <$>) . eitherDecode'
+toMsgReply 11 = (Sync <$>) . eitherDecode'
+toMsgReply _  = error "Unknown Event type found"
 
 -- | Success Reply
 -- used for Sync, Subscribe, Command, Tick
@@ -60,7 +59,7 @@ data Success = Success {
 } deriving (Eq, Show, Generic, FromJSON)
 
 instance ToJSON Success where
-    toEncoding = genericToEncoding defaultOptions 
+    toEncoding = genericToEncoding defaultOptions
 
 -- | Workspaces Reply
 -- The reply consists of a serialized list of workspaces. 
@@ -104,6 +103,8 @@ data Node = Node {
     node_id :: !Int -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
     , node_name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
     , node_type :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
+    , node_output :: !Text -- ^ The X11 display the node is drawn in. ex. "DP-4.8"
+    , node_orientation :: !NodeOrientation -- ^ Can either be "horizontal" "vertical" or "none"
     , node_border :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
     , node_current_border_width :: !Int32 -- ^ Number of pixels of the border width. 
     , node_layout :: !NodeLayout -- ^ Can be either "splith", "splitv", "stacked", "tabbed", "dockarea" or "output". Other values might be possible in the future, should we add new layouts. 
@@ -113,40 +114,41 @@ data Node = Node {
     , node_deco_rect :: !Rect -- ^ The coordinates of the window decoration inside its container. These coordinates are relative to the container and do not include the actual client window. 
     , node_geometry :: !Rect -- ^ The original geometry the window specified when i3 mapped it. Used when switching a window to floating mode, for example. 
     , node_window :: !(Maybe Int32) -- ^ The X11 window ID of the actual client window inside this container. This field is set to null for split containers or otherwise empty containers. This ID corresponds to what xwininfo(1) and other X11-related tools display (usually in hex). 
-    , node_window_properties :: !(Maybe (Map WindowProperty Text)) -- ^ X11 window properties title, instance, class, window_role and transient_for. 
+    , node_window_properties :: !(Maybe (Map WindowProperty (Maybe Text))) -- ^ X11 window properties title, instance, class, window_role and transient_for. 
     , node_urgent :: !Bool -- ^ Whether this container (window, split container, floating container or workspace) has the urgency hint set, directly or indirectly. All parent containers up until the workspace container will be marked urgent if they have at least one urgent child. 
     , node_focused :: !Bool -- ^ Whether this container is currently focused. 
     , node_focus :: !(Vector Int64) -- ^ List of child node IDs (see nodes, floating_nodes and id) in focus order. Traversing the tree by following the first entry in this array will result in eventually reaching the one node with focused set to true. 
+    , node_sticky :: !Bool
     , node_nodes :: !(Vector Node) -- ^ The tiling (i.e. non-floating) child containers of this node. 
     , node_floating_nodes :: !(Vector Node) -- ^ The floating child containers of this node. Only non-empty on nodes with type workspace. 
 } deriving (Eq, Generic, Show)
+
+data NodeOrientation =
+    Horizontal
+    | Vertical
+    | OrientNone
+    deriving (Eq, Generic, Show)
+
+instance FromJSON NodeOrientation where
+    parseJSON (String s) = pure $! case s of
+        "none"       -> OrientNone
+        "horizontal" -> Horizontal
+        "vertical"   -> Vertical
+        _            -> error "Unrecognized NodeOrientation"
+    parseJSON _ = mzero
+
+instance ToJSON NodeOrientation where
+    toEncoding = \case
+        OrientNone -> text "none"
+        Vertical   -> text "vertical"
+        Horizontal -> text "horizontal"
 
 instance ToJSON Node where
     toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 5 }
 
 instance FromJSON Node where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 } 
-        -- withObject "Node" $ \o -> do
-        -- node_id <- o .: "id"
-        -- node_name <- o .:? "name"
-        -- node_type <- o .: "type"
-        -- node_border <- o .: "border"
-        -- node_current_border_width <- o .: "current_border_width"
-        -- node_layout <- o .: "layout"
-        -- node_percent <- o .:? "percent"
-        -- node_rect <- o .: "rect"
-        -- node_window_rect <- o .: "window_rect"
-        -- node_deco_rect <- o .: "deco_rect"
-        -- node_geometry <- o .: "geometry"
-        -- node_window <- o .:? "window"
-        -- node_window_properties <- o .:? "window_properties"
-        -- node_urgent <- o .: "urgent"
-        -- node_focused <- o .: "focused"
-        -- node_focus <- o .: "focus"
-        -- node_nodes <- o .: "nodes"
-        -- node_floating_nodes <- o .: "floating_nodes"
-        -- pure $! Node {..}
+    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
 
 data WindowProperty =
     Title
@@ -154,7 +156,18 @@ data WindowProperty =
     | Class
     | WindowRole
     | TransientFor
-    deriving (Eq, Enum, Ord, Generic, Show, FromJSONKey)
+    deriving (Eq, Enum, Ord, Generic, Show)
+
+instance FromJSONKey WindowProperty where
+    fromJSONKey = FromJSONKeyText f
+      where
+        f x = case x of
+            "title"         -> Title
+            "instance"      -> Instance
+            "class"         -> Class
+            "window_role"   -> WindowRole
+            "transient_for" -> TransientFor
+            _               -> error "Unrecognized window property"
 
 instance ToJSONKey WindowProperty where
     toJSONKey = ToJSONKeyText f g

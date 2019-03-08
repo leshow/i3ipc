@@ -33,6 +33,7 @@ import           Network.Socket               hiding ( send
 import           Network.Socket.ByteString.Lazy
 import           Data.Aeson                          ( encode )
 import           Data.Binary.Get
+import           Data.Bifunctor                      ( second )
 import qualified Data.ByteString.Lazy.Char8         as BL
 import           Data.Bits                           ( testBit
                                                      , clearBit
@@ -52,7 +53,7 @@ getSocketPath = do
 
 -- | Subscribe to i3 msgs of the specific 'ReplyType'
 --
-subscribe :: (Maybe Reply -> IO ()) -> [Sub.Subscribe] -> IO ()
+subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
 subscribe handle subtypes = do
     soc  <- socket AF_UNIX Stream 0
     addr <- getSocketPath
@@ -61,17 +62,19 @@ subscribe handle subtypes = do
         Just addr' ->
             connect soc (SockAddrUnix $ BL.unpack addr')
                 >> Msg.sendMsg soc Msg.Subscribe (encode subtypes)
+                >> receiveMsg soc
                 >> handleSoc soc
                 >> close soc
-    where handleSoc soc = do
-            r <- receive soc
-            handle r
-            handleSoc soc
+  where
+    handleSoc soc = do
+        r <- receiveEvent soc
+        handle r
+        handleSoc soc
 
 
 data Reply  = Message MsgReply | Event Evt.Event deriving (Show, Eq)
 
-getReply :: Socket -> IO (Maybe (Int, BL.ByteString))
+getReply :: Socket -> IO (Either String (Int, BL.ByteString))
 getReply soc = do
     magic <- recv soc 6
     if magic == "i3-ipc"
@@ -79,31 +82,38 @@ getReply soc = do
             len  <- fromIntegral . runGet getWord32le <$> recv soc 4
             ty   <- fromIntegral . runGet getWord32le <$> recv soc 4
             body <- recv soc len
-            pure $ Just (ty, body)
-        else pure Nothing
+            pure $ Right (ty, body)
+        else pure $ Left "Failed to get reply"
 
-receive :: Socket -> IO (Maybe Reply)
+test :: Int -> BL.ByteString -> IO Int
+test ty body = do
+    putStrLn $ "type " <> show (ty `clearBit` 31)
+    BL.putStrLn $ "body " <> body
+    BL.putStrLn ""
+    pure ty
+
+receive :: Socket -> IO (Either String Reply)
 receive soc = do
     reply <- getReply soc
     case reply of
-        Just (ty, body) -> pure $ if testBit ty 31
-            then Event <$> Evt.toEvent (ty `clearBit` 31) body
-            else Message <$> toMsgReply ty body
-        _ -> pure Nothing
+        Right (ty, body) -> pure $ if testBit ty 31
+            then Event `second` Evt.toEvent (ty `clearBit` 31) body
+            else Message `second` toMsgReply ty body
+        _ -> pure $ Left "Get Reply failed"
 
-receiveMsg :: Socket -> IO (Maybe MsgReply)
+receiveMsg :: Socket -> IO (Either String MsgReply)
 receiveMsg soc = do
     r <- getReply soc
     pure $ do
         (ty, body) <- r
         toMsgReply ty body
 
-receiveEvent :: Socket -> IO (Maybe Evt.Event)
+receiveEvent :: Socket -> IO (Either String Evt.Event)
 receiveEvent soc = do
     r <- getReply soc
     pure $ do
         (ty, body) <- r
-        if testBit ty 31 then Evt.toEvent (ty `clearBit` 31) body else Nothing
+        Evt.toEvent (ty `clearBit` 31) body
 
 connecti3 :: IO Socket
 connecti3 = do
@@ -115,9 +125,9 @@ connecti3 = do
             connect soc (SockAddrUnix $ BL.unpack addr')
             pure soc
 
-runCommand :: Socket -> BL.ByteString -> IO (Maybe Reply)
+runCommand :: Socket -> BL.ByteString -> IO (Either String Reply)
 runCommand soc b = Msg.sendMsg soc Msg.RunCommand b >> receive soc
 
 
-getWorkspaces :: Socket -> IO (Maybe Reply)
+getWorkspaces :: Socket -> IO (Either String Reply)
 getWorkspaces soc = Msg.sendMsg' soc Msg.Workspaces >> receive soc
