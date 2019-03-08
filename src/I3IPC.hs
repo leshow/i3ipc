@@ -86,7 +86,7 @@ subscribe handle subtypes = do
         Nothing -> putStrLn "Failed to get i3 socket path" >> exitFailure
         Just addr' ->
             connect soc (SockAddrUnix $ BL.unpack addr')
-                >> Msg.sendMsg soc Msg.Subscribe (encode subtypes)
+                >> Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
                 >> receiveMsg soc
                 >> handleSoc soc
                 >> close soc
@@ -186,38 +186,38 @@ receiveEvent' soc = do
 -- Msg.sendMsg soc Msg.X b >> receiveMsg soc
 -- @
 runCommand :: Socket -> BL.ByteString -> IO (Either String MsgReply)
-runCommand soc b = Msg.sendMsg soc Msg.RunCommand b >> receiveMsg soc
+runCommand soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg soc
 
 runCommand' :: Socket -> BL.ByteString -> IO (Either String MsgReply)
-runCommand' soc b = Msg.sendMsg soc Msg.RunCommand b >> receiveMsg' soc
+runCommand' soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg' soc
 
 getWorkspaces :: Socket -> IO (Either String MsgReply)
-getWorkspaces soc = Msg.sendMsg' soc Msg.Workspaces >> receiveMsg soc
+getWorkspaces soc = Msg.sendMsg soc Msg.Workspaces >> receiveMsg soc
 
 getWorkspaces' :: Socket -> IO (Either String MsgReply)
-getWorkspaces' soc = Msg.sendMsg' soc Msg.Workspaces >> receiveMsg' soc
+getWorkspaces' soc = Msg.sendMsg soc Msg.Workspaces >> receiveMsg' soc
 
 getOutputs :: Socket -> IO (Either String MsgReply)
-getOutputs soc = Msg.sendMsg' soc Msg.Outputs >> receiveMsg soc
+getOutputs soc = Msg.sendMsg soc Msg.Outputs >> receiveMsg soc
 
 getOutputs' :: Socket -> IO (Either String MsgReply)
-getOutputs' soc = Msg.sendMsg' soc Msg.Outputs >> receiveMsg' soc
+getOutputs' soc = Msg.sendMsg soc Msg.Outputs >> receiveMsg' soc
 
 getTree :: Socket -> IO (Either String MsgReply)
-getTree soc = Msg.sendMsg' soc Msg.Tree >> receiveMsg soc
+getTree soc = Msg.sendMsg soc Msg.Tree >> receiveMsg soc
 
 getTree' :: Socket -> IO (Either String MsgReply)
-getTree' soc = Msg.sendMsg' soc Msg.Tree >> receiveMsg' soc
+getTree' soc = Msg.sendMsg soc Msg.Tree >> receiveMsg' soc
 
 getMarks :: Socket -> IO (Either String MsgReply)
-getMarks soc = Msg.sendMsg' soc Msg.Marks >> receiveMsg soc
+getMarks soc = Msg.sendMsg soc Msg.Marks >> receiveMsg soc
 
 getMarks' :: Socket -> IO (Either String MsgReply)
-getMarks' soc = Msg.sendMsg' soc Msg.Marks >> receiveMsg' soc
+getMarks' soc = Msg.sendMsg soc Msg.Marks >> receiveMsg' soc
 
 getBarIds :: Socket -> IO (Either String BarIds)
 getBarIds soc = do
-    _ <- Msg.sendMsg' soc Msg.BarConfig
+    _ <- Msg.sendMsg soc Msg.BarConfig
     r <- getReply soc
     pure $ do
         body <- r
@@ -225,41 +225,41 @@ getBarIds soc = do
 
 -- | Get a bar's config based on it's id
 getBarConfig :: Socket -> BL.ByteString -> IO (Either String MsgReply)
-getBarConfig soc b = Msg.sendMsg soc Msg.BarConfig b >> receiveMsg' soc
+getBarConfig soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
 -- | Like 'getBarConfig' but strict
 getBarConfig' :: Socket -> BL.ByteString -> IO (Either String MsgReply)
-getBarConfig' soc b = Msg.sendMsg soc Msg.BarConfig b >> receiveMsg' soc
+getBarConfig' soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
 getVersion :: Socket -> IO (Either String MsgReply)
-getVersion soc = Msg.sendMsg' soc Msg.Version >> receiveMsg soc
+getVersion soc = Msg.sendMsg soc Msg.Version >> receiveMsg soc
 
 getVersion' :: Socket -> IO (Either String MsgReply)
-getVersion' soc = Msg.sendMsg' soc Msg.Version >> receiveMsg' soc
+getVersion' soc = Msg.sendMsg soc Msg.Version >> receiveMsg' soc
 
 getBindingModes :: Socket -> IO (Either String MsgReply)
-getBindingModes soc = Msg.sendMsg' soc Msg.BindingModes >> receiveMsg soc
+getBindingModes soc = Msg.sendMsg soc Msg.BindingModes >> receiveMsg soc
 
 getBindingModes' :: Socket -> IO (Either String MsgReply)
-getBindingModes' soc = Msg.sendMsg' soc Msg.BindingModes >> receiveMsg' soc
+getBindingModes' soc = Msg.sendMsg soc Msg.BindingModes >> receiveMsg' soc
 
 getConfig :: Socket -> IO (Either String MsgReply)
-getConfig soc = Msg.sendMsg' soc Msg.Config >> receiveMsg soc
+getConfig soc = Msg.sendMsg soc Msg.Config >> receiveMsg soc
 
 getConfig' :: Socket -> IO (Either String MsgReply)
-getConfig' soc = Msg.sendMsg' soc Msg.Config >> receiveMsg' soc
+getConfig' soc = Msg.sendMsg soc Msg.Config >> receiveMsg' soc
 
 getTick :: Socket -> IO (Either String MsgReply)
-getTick soc = Msg.sendMsg' soc Msg.Tick >> receiveMsg soc
+getTick soc = Msg.sendMsg soc Msg.Tick >> receiveMsg soc
 
 getTick' :: Socket -> IO (Either String MsgReply)
-getTick' soc = Msg.sendMsg' soc Msg.Tick >> receiveMsg' soc
+getTick' soc = Msg.sendMsg soc Msg.Tick >> receiveMsg' soc
 
 getSync :: Socket -> IO (Either String MsgReply)
-getSync soc = Msg.sendMsg' soc Msg.Sync >> receiveMsg soc
+getSync soc = Msg.sendMsg soc Msg.Sync >> receiveMsg soc
 
 getSync' :: Socket -> IO (Either String MsgReply)
-getSync' soc = Msg.sendMsg' soc Msg.Sync >> receiveMsg' soc
+getSync' soc = Msg.sendMsg soc Msg.Sync >> receiveMsg' soc
 
 
 
