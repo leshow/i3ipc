@@ -12,3 +12,30 @@ import           I3IPC              ( subscribe )
 main :: IO ()
 main = subscribe print [Sub.Workspace, Sub.Window]
 ```
+
+Sending Messages to i3:
+
+```haskell
+import qualified I3IPC.Message     as Msg
+import           I3IPC              ( connecti3
+                                    , receiveMsg
+                                    )
+
+main :: IO ()
+main = do
+    soc <- connecti3
+    print $ Msg.sendMsg' soc Msg.Workspaces >> receiveMsg soc
+```
+
+Alternatively, there are convenience functions around the different messages you can send:
+
+```haskell
+import           I3IPC              ( connecti3
+                                    , getWorkspaces
+                                    )
+
+main :: IO ()
+main = do
+    soc <- connecti3
+    print getWorkspaces
+```

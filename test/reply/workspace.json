@@ -1,0 +1,47 @@
+[
+  {
+    "num": 2,
+    "name": "2",
+    "visible": false,
+    "focused": false,
+    "rect": { "x": 2560, "y": 29, "width": 2560, "height": 1571 },
+    "output": "DVI-I-3",
+    "urgent": false
+  },
+  {
+    "num": 7,
+    "name": "7",
+    "visible": true,
+    "focused": true,
+    "rect": { "x": 2560, "y": 29, "width": 2560, "height": 1571 },
+    "output": "DVI-I-3",
+    "urgent": false
+  },
+  {
+    "num": 8,
+    "name": "8",
+    "visible": false,
+    "focused": false,
+    "rect": { "x": 2560, "y": 29, "width": 2560, "height": 1571 },
+    "output": "DVI-I-3",
+    "urgent": false
+  },
+  {
+    "num": 1,
+    "name": "1",
+    "visible": true,
+    "focused": false,
+    "rect": { "x": 0, "y": 30, "width": 2560, "height": 1570 },
+    "output": "DVI-I-2",
+    "urgent": false
+  },
+  {
+    "num": 4,
+    "name": "4",
+    "visible": false,
+    "focused": false,
+    "rect": { "x": 0, "y": 30, "width": 2560, "height": 1570 },
+    "output": "DVI-I-2",
+    "urgent": false
+  }
+]

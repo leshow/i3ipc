@@ -34,15 +34,26 @@ data Event =
     | Tick !TickEvent
     deriving (Eq, Show)
 
+toEvent' :: Int -> BL.ByteString -> Either String Event
+toEvent' 0 = (Workspace <$>) . eitherDecode'
+toEvent' 1 = (Output <$>) . eitherDecode'
+toEvent' 2 = (Mode <$>) . eitherDecode' 
+toEvent' 3 = (Window <$>) . eitherDecode'
+toEvent' 4 = (BarConfigUpdate <$>) . eitherDecode'
+toEvent' 5 = (Binding <$>) . eitherDecode'
+toEvent' 6 = (Shutdown <$>) . eitherDecode'
+toEvent' 7 = (Tick <$>) . eitherDecode'
+toEvent' _ = error "Unknown Event type found"
+
 toEvent :: Int -> BL.ByteString -> Either String Event
-toEvent 0 = (Workspace <$>) . eitherDecode'
-toEvent 1 = (Output <$>) . eitherDecode'
-toEvent 2 = (Mode <$>) . eitherDecode' 
-toEvent 3 = (Window <$>) . eitherDecode'
-toEvent 4 = (BarConfigUpdate <$>) . eitherDecode'
-toEvent 5 = (Binding <$>) . eitherDecode'
-toEvent 6 = (Shutdown <$>) . eitherDecode'
-toEvent 7 = (Tick <$>) . eitherDecode'
+toEvent 0 = (Workspace <$>) . eitherDecode
+toEvent 1 = (Output <$>) . eitherDecode
+toEvent 2 = (Mode <$>) . eitherDecode
+toEvent 3 = (Window <$>) . eitherDecode
+toEvent 4 = (BarConfigUpdate <$>) . eitherDecode
+toEvent 5 = (Binding <$>) . eitherDecode
+toEvent 6 = (Shutdown <$>) . eitherDecode
+toEvent 7 = (Tick <$>) . eitherDecode
 toEvent _ = error "Unknown Event type found"
 
 data WorkspaceChange =

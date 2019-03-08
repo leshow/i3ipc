@@ -18,7 +18,7 @@ data MsgReply =
     -- | Subscribe this IPC connection to the event types specified in the message payload. 
     | Subscribe !Success
     -- | Get the list of current outputs.
-    | Outputs !OutputsReply
+    | GetOutputs !OutputsReply
     -- | Get the i3 layout tree.
     | Tree !Node
     -- | Gets the names of all currently set marks.
@@ -37,20 +37,38 @@ data MsgReply =
     | Sync !Success
     deriving (Show, Eq)
 
+toMsgReply' :: Int -> BL.ByteString -> Either String MsgReply
+toMsgReply' 0  = (RunCommand <$>) . eitherDecode'
+toMsgReply' 1  = (Workspaces <$>) . eitherDecode'
+toMsgReply' 2  = (Subscribe <$>) . eitherDecode'
+toMsgReply' 3  = (GetOutputs <$>) . eitherDecode'
+toMsgReply' 4  = (Tree <$>) . eitherDecode'
+toMsgReply' 5  = (Marks <$>) . eitherDecode'
+toMsgReply' 6  = (BarConfig <$>) . eitherDecode'
+toMsgReply' 7  = (Version <$>) . eitherDecode'
+toMsgReply' 8  = (BindingModes <$>) . eitherDecode'
+toMsgReply' 9  = (Config <$>) . eitherDecode'
+toMsgReply' 10 = (Tick <$>) . eitherDecode'
+toMsgReply' 11 = (Sync <$>) . eitherDecode'
+toMsgReply' _  = error "Unknown Event type found"
+
 toMsgReply :: Int -> BL.ByteString -> Either String MsgReply
-toMsgReply 0  = (RunCommand <$>) . eitherDecode'
-toMsgReply 1  = (Workspaces <$>) . eitherDecode'
-toMsgReply 2  = (Subscribe <$>) . eitherDecode'
-toMsgReply 3  = (Outputs <$>) . eitherDecode'
-toMsgReply 4  = (Tree <$>) . eitherDecode'
-toMsgReply 5  = (Marks <$>) . eitherDecode'
-toMsgReply 6  = (BarConfig <$>) . eitherDecode'
-toMsgReply 7  = (Version <$>) . eitherDecode'
-toMsgReply 8  = (BindingModes <$>) . eitherDecode'
-toMsgReply 9  = (Config <$>) . eitherDecode'
-toMsgReply 10 = (Tick <$>) . eitherDecode'
-toMsgReply 11 = (Sync <$>) . eitherDecode'
+toMsgReply 0  = (RunCommand <$>) . eitherDecode
+toMsgReply 1  = (Workspaces <$>) . eitherDecode
+toMsgReply 2  = (Subscribe <$>) . eitherDecode
+toMsgReply 3  = (GetOutputs <$>) . eitherDecode
+toMsgReply 4  = (Tree <$>) . eitherDecode
+toMsgReply 5  = (Marks <$>) . eitherDecode
+toMsgReply 6  = (BarConfig <$>) . eitherDecode
+toMsgReply 7  = (Version <$>) . eitherDecode
+toMsgReply 8  = (BindingModes <$>) . eitherDecode
+toMsgReply 9  = (Config <$>) . eitherDecode
+toMsgReply 10 = (Tick <$>) . eitherDecode
+toMsgReply 11 = (Sync <$>) . eitherDecode
 toMsgReply _  = error "Unknown Event type found"
+
+decodeBarIds :: BL.ByteString -> Either String BarIds
+decodeBarIds = eitherDecode
 
 -- | Success Reply
 -- used for Sync, Subscribe, Command, Tick
@@ -63,7 +81,15 @@ instance ToJSON Success where
 
 -- | Workspaces Reply
 -- The reply consists of a serialized list of workspaces. 
-data WorkspaceReply = WorkspaceReply {
+data WorkspaceReply = WorkspaceReply !(Vector Workspace) deriving (Eq, Generic, Show)
+
+instance ToJSON WorkspaceReply where
+    toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON WorkspaceReply where
+    parseJSON = genericParseJSON defaultOptions
+
+data Workspace = Workspace {
     ws_num :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
     , ws_name :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
     , ws_visible :: !Bool -- ^ Whether this workspace is currently visible on an output (multiple workspaces can be visible at the same time). 
@@ -73,28 +99,36 @@ data WorkspaceReply = WorkspaceReply {
     , ws_output :: !Text -- ^ The video output this workspace is on (LVDS1, VGA1, …). 
 } deriving (Eq, Generic, Show)
 
-instance ToJSON WorkspaceReply where
+instance ToJSON Workspace where
     toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 3 }
 
-instance FromJSON WorkspaceReply where
+instance FromJSON Workspace where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 }
 
 -- | Outputs Reply
 -- The reply consists of a serialized list of outputs. 
-data OutputsReply = OutputsReply {
+data OutputsReply = OutputsReply !(Vector Outputs) deriving (Eq, Generic, Show)
+
+instance ToJSON OutputsReply where
+    toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON OutputsReply where
+    parseJSON = genericParseJSON defaultOptions
+
+data Outputs = Outputs {
     output_name :: !Text
     , output_active :: !Bool
     , output_primary :: !Bool
-    , output_current_workspace :: !Text
+    , output_current_workspace :: !(Maybe Text)
     , output_rect :: !Rect
 } deriving (Eq, Show, Generic)
 
-instance ToJSON OutputsReply where
+instance ToJSON Outputs where
     toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 7 }
 
-instance FromJSON OutputsReply where
+instance FromJSON Outputs where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 7 }
 
 -- | Tree Reply
@@ -103,7 +137,7 @@ data Node = Node {
     node_id :: !Int -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
     , node_name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
     , node_type :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
-    , node_output :: !Text -- ^ The X11 display the node is drawn in. ex. "DP-4.8"
+    , node_output :: !(Maybe Text) -- ^ The X11 display the node is drawn in. ex. "DP-4.8"
     , node_orientation :: !NodeOrientation -- ^ Can either be "horizontal" "vertical" or "none"
     , node_border :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
     , node_current_border_width :: !Int32 -- ^ Number of pixels of the border width. 
@@ -119,8 +153,8 @@ data Node = Node {
     , node_focused :: !Bool -- ^ Whether this container is currently focused. 
     , node_focus :: !(Vector Int64) -- ^ List of child node IDs (see nodes, floating_nodes and id) in focus order. Traversing the tree by following the first entry in this array will result in eventually reaching the one node with focused set to true. 
     , node_sticky :: !Bool
-    , node_nodes :: !(Vector Node) -- ^ The tiling (i.e. non-floating) child containers of this node. 
     , node_floating_nodes :: !(Vector Node) -- ^ The floating child containers of this node. Only non-empty on nodes with type workspace. 
+    , node_nodes :: !(Vector Node) -- ^ The tiling (i.e. non-floating) child containers of this node. 
 } deriving (Eq, Generic, Show)
 
 data NodeOrientation =
@@ -207,9 +241,7 @@ instance ToJSON WindowProperty where
 -- | Marks Reply
 -- The reply consists of a single array of strings for each container that has a mark. A mark can only be set on one container, so the array is unique. The order of that array is undefined.
 -- If no window has a mark the response will be the empty array [].
-data MarksReply = MarksReply {
-    marks :: !(Vector Text)
-} deriving (Eq, Generic, Show, FromJSON)
+data MarksReply = MarksReply !(Vector Text) deriving (Eq, Generic, Show, FromJSON)
 
 instance ToJSON MarksReply where
     toEncoding = genericToEncoding defaultOptions
@@ -304,6 +336,14 @@ instance FromJSON NodeLayout where
 
 -- | BarConfig Reply
 -- This can be used by third-party workspace bars (especially i3bar, but others are free to implement compatible alternatives) to get the bar block configuration from i3.
+data BarIds = BarIds !(Vector Text) deriving (Eq, Generic, Show)
+
+instance ToJSON BarIds where
+    toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON BarIds where
+    parseJSON = genericParseJSON defaultOptions
+
 data BarConfigReply = BarConfigReply {
     bar_id :: !Text
     , bar_mode :: !Text
@@ -464,16 +504,13 @@ instance FromJSON VersionReply where
 
 -- | BindingModes Reply
 -- The reply consists of an array of all currently configured binding modes.
-data BindingModesReply = BindingModesReply {
-    bm_mode :: !(Vector Text)
-} deriving (Eq, Generic, Show)
+data BindingModesReply = BindingModesReply !(Vector Text) deriving (Eq, Generic, Show)
 
 instance ToJSON BindingModesReply where
-    toEncoding =
-        genericToEncoding defaultOptions { fieldLabelModifier = drop 3 }
+    toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON BindingModesReply where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 }
+    parseJSON = genericParseJSON defaultOptions
 
 -- | Config Reply
 -- The config reply is a map which currently only contains the "config" member, which is a string containing the config file as loaded by i3 most recently.

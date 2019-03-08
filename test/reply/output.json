@@ -1,0 +1,23 @@
+[
+  {
+    "name": "xroot-0",
+    "active": false,
+    "primary": false,
+    "rect": { "x": 0, "y": 0, "width": 5120, "height": 1600 },
+    "current_workspace": null
+  },
+  {
+    "name": "DVI-I-2",
+    "active": true,
+    "primary": false,
+    "rect": { "x": 0, "y": 0, "width": 2560, "height": 1600 },
+    "current_workspace": "1"
+  },
+  {
+    "name": "DVI-I-3",
+    "active": true,
+    "primary": false,
+    "rect": { "x": 2560, "y": 0, "width": 2560, "height": 1600 },
+    "current_workspace": "7"
+  }
+]
