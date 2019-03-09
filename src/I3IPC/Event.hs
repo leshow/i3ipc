@@ -1,3 +1,6 @@
+{-|
+Related to `I3IPC.Subscribe.Subscribe', specifically, each 'I3IPC.Event.Event' constructor matches a constructor for 'I3IPC.Subscribe.Subscribe'
+-}
 {-# LANGUAGE RecordWildCards #-}
 module I3IPC.Event where
 
@@ -14,23 +17,23 @@ import           Data.Int
 import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
 
--- | I3 'EventType' https://i3wm.org/docs/ipc.html#_events
+-- | Responses to the various events you can subscribe to.
 data Event =
-    -- | See "WorkspaceEvent" for response.  Sent when the user switches to a different workspace, when a new workspace is initialized or when a workspace is removed (because the last client vanished). 
+    -- | See 'I3IPC.Event.WorkspaceEvent' for response.  Sent when the user switches to a different workspace, when a new workspace is initialized or when a workspace is removed (because the last client vanished). 
     Workspace !WorkspaceEvent
-    -- | See "OutputEvent" for response.  Sent when RandR issues a change notification (of either screens, outputs, CRTCs or output properties). 
+    -- | See 'I3IPC.Event.OutputEvent' for response.  Sent when RandR issues a change notification (of either screens, outputs, CRTCs or output properties). 
     | Output !OutputEvent
-    -- | See "ModeEvent" for response.  Sent whenever i3 changes its binding mode. 
+    -- | See 'I3IPC.Event.ModeEvent' for response.  Sent whenever i3 changes its binding mode. 
     | Mode !ModeEvent
-    -- | See "WindowEvent" for response.  Sent when a client’s window is successfully reparented (that is when i3 has finished fitting it into a container), when a window received input focus or when certain properties of the window have changed. 
+    -- | See 'I3IPC.Event.WindowEvent' for response.  Sent when a client’s window is successfully reparented (that is when i3 has finished fitting it into a container), when a window received input focus or when certain properties of the window have changed. 
     | Window !WindowEvent
-    -- | See "BarConfigUpdateEvent" for response.  Sent when the hidden_state or mode field in the barconfig of any bar instance was updated and when the config is reloaded.
+    -- | See 'I3IPC.Event.BarConfigUpdateEvent' for response.  Sent when the hidden_state or mode field in the barconfig of any bar instance was updated and when the config is reloaded.
     | BarConfigUpdate !BarConfigUpdateEvent
-    -- | See "BindingEvent" for response. Sent when a configured command binding is triggered with the keyboard or mouse 
+    -- | See 'I3IPC.Event.BindingEvent' for response. Sent when a configured command binding is triggered with the keyboard or mouse 
     | Binding !BindingEvent
-    -- |  See "ShutdownEvent" for response. Sent when the ipc shuts down because of a restart or exit by user command 
+    -- |  See 'I3IPC.Event.ShutdownEvent' for response. Sent when the ipc shuts down because of a restart or exit by user command 
     | Shutdown !ShutdownEvent
-    -- | See "TickEvent" for response. Sent when the ipc client subscribes to the tick event (with "first": true) or when any ipc client sends a SEND_TICK message (with "first": false).
+    -- | See 'I3IPC.Event.TickEvent' for response. Sent when the ipc client subscribes to the tick event (with "first": true) or when any ipc client sends a SEND_TICK message (with "first": false).
     | Tick !TickEvent
     deriving (Eq, Show)
 
@@ -270,7 +273,7 @@ instance ToJSON ShutdownChange where
         Exit    -> text "exit"
 
 -- | Tick Event
--- This event is triggered by a subscription to tick events or by a SEND_TICK message.
+-- This event is triggered by a subscription to tick events or by a 'I3IPC.Message.Tick' message.
 data TickEvent = TickEvent {
     tick_first :: !Bool
     , tick_payload :: !Text

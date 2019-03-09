@@ -18,7 +18,7 @@ data MsgReply =
     -- | Subscribe this IPC connection to the event types specified in the message payload. 
     | Subscribe !Success
     -- | Get the list of current outputs.
-    | GetOutputs !OutputsReply
+    | Outputs !OutputsReply
     -- | Get the i3 layout tree.
     | Tree !Node
     -- | Gets the names of all currently set marks.
@@ -41,7 +41,7 @@ toMsgReply' :: Int -> BL.ByteString -> Either String MsgReply
 toMsgReply' 0  = (RunCommand <$>) . eitherDecode'
 toMsgReply' 1  = (Workspaces <$>) . eitherDecode'
 toMsgReply' 2  = (Subscribe <$>) . eitherDecode'
-toMsgReply' 3  = (GetOutputs <$>) . eitherDecode'
+toMsgReply' 3  = (Outputs <$>) . eitherDecode'
 toMsgReply' 4  = (Tree <$>) . eitherDecode'
 toMsgReply' 5  = (Marks <$>) . eitherDecode'
 toMsgReply' 6  = (BarConfig <$>) . eitherDecode'
@@ -56,7 +56,7 @@ toMsgReply :: Int -> BL.ByteString -> Either String MsgReply
 toMsgReply 0  = (RunCommand <$>) . eitherDecode
 toMsgReply 1  = (Workspaces <$>) . eitherDecode
 toMsgReply 2  = (Subscribe <$>) . eitherDecode
-toMsgReply 3  = (GetOutputs <$>) . eitherDecode
+toMsgReply 3  = (Outputs <$>) . eitherDecode
 toMsgReply 4  = (Tree <$>) . eitherDecode
 toMsgReply 5  = (Marks <$>) . eitherDecode
 toMsgReply 6  = (BarConfig <$>) . eitherDecode
@@ -108,7 +108,7 @@ instance FromJSON Workspace where
 
 -- | Outputs Reply
 -- The reply consists of a serialized list of outputs. 
-data OutputsReply = OutputsReply !(Vector Outputs) deriving (Eq, Generic, Show)
+data OutputsReply = OutputsReply !(Vector Output) deriving (Eq, Generic, Show)
 
 instance ToJSON OutputsReply where
     toEncoding = genericToEncoding defaultOptions
@@ -116,7 +116,7 @@ instance ToJSON OutputsReply where
 instance FromJSON OutputsReply where
     parseJSON = genericParseJSON defaultOptions
 
-data Outputs = Outputs {
+data Output = Output {
     output_name :: !Text
     , output_active :: !Bool
     , output_primary :: !Bool
@@ -124,11 +124,11 @@ data Outputs = Outputs {
     , output_rect :: !Rect
 } deriving (Eq, Show, Generic)
 
-instance ToJSON Outputs where
+instance ToJSON Output where
     toEncoding =
         genericToEncoding defaultOptions { fieldLabelModifier = drop 7 }
 
-instance FromJSON Outputs where
+instance FromJSON Output where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 7 }
 
 -- | Tree Reply
@@ -460,7 +460,6 @@ instance FromJSON BarPart where
         "binding_mode_border"       -> BindingModeBorder
         _ -> error "Unrecognized BarPart variant found"
     parseJSON _ = mzero
-
 
 instance ToJSON BarPart where
     toEncoding = \case

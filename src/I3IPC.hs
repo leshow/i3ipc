@@ -1,5 +1,25 @@
+-- |
+-- Module:      I3IPC
+-- Copyright:   (c) 2019 Evan Cameron
+-- License:     BSD3
+-- Maintainer:  Evan Cameron <cameron.evan@gmail.com>
+--
+-- Types and functions for interacting with i3's IPC mechanism
+--
+
+
 module I3IPC
-    ( getSocketPath
+    ( 
+    -- ** Subscribe to events
+    -- $sub
+
+    -- ** Sending messages
+    -- $msg
+
+    -- ** Convenience functions
+    -- $func    
+    getSocketPath
+    , Response(..)
     , subscribe
     , receive
     , receive'
@@ -63,7 +83,7 @@ import           Data.Bits                           ( testBit
                                                      , clearBit
                                                      )
 
--- | Get the unix socket path from i3
+-- | Get a new unix socket path from i3
 getSocketPath :: IO (Maybe BL.ByteString)
 getSocketPath = do
     res <- lookupEnv "I3SOCK"
@@ -76,8 +96,7 @@ getSocketPath = do
                 else pure $ Just (BL.filter (/= '\n') out)
 
 
--- | Subscribe to i3 msgs of the specific 'ReplyType'
---
+-- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
 subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
 subscribe handle subtypes = do
     soc  <- socket AF_UNIX Stream 0
@@ -108,7 +127,8 @@ connecti3 = do
             connect soc (SockAddrUnix $ BL.unpack addr')
             pure soc
 
-data Reply  = Message MsgReply | Event Evt.Event deriving (Show, Eq)
+-- | Useful for when you are receiving Events or Messages.
+data Response = Message MsgReply | Event Evt.Event deriving (Show, Eq)
 
 -- | Get and parse the response using i3's IPC
 getReply :: Socket -> IO (Either String (Int, BL.ByteString))
@@ -129,8 +149,8 @@ test ty body = do
     BL.putStrLn ""
     pure ty
 
--- | Parse response from socket, returning either an error or a 'Reply' representing a sum type of a 'MsgReply' or 'Evt.Event'
-receive :: Socket -> IO (Either String Reply)
+-- | Parse response from socket, returning either an error or a 'I3IPC.Response', representing a sum type of a 'I3IPC.Reply.MsgReply' or 'I3IPC.Event.Event'
+receive :: Socket -> IO (Either String Response)
 receive soc = do
     reply <- getReply soc
     case reply of
@@ -140,7 +160,7 @@ receive soc = do
         _ -> pure $ Left "Get Reply failed"
 
 -- | Like receive but strict-- will use eitherDecode' under the hood to parse
-receive' :: Socket -> IO (Either String Reply)
+receive' :: Socket -> IO (Either String Response)
 receive' soc = do
     reply <- getReply soc
     case reply of
@@ -157,7 +177,7 @@ receiveMsg soc = do
         (ty, body) <- r
         toMsgReply ty body
 
--- | Like 'receiveMsg' but strict-- uses eitherDecode'
+-- | Like 'I3IPC.receiveMsg' but strict-- uses eitherDecode'
 receiveMsg' :: Socket -> IO (Either String MsgReply)
 receiveMsg' soc = do
     r <- getReply soc
@@ -165,7 +185,7 @@ receiveMsg' soc = do
         (ty, body) <- r
         toMsgReply' ty body
 
--- | 'receive' specifically for Event
+-- | 'I3IPC.receive' specifically for Event
 receiveEvent :: Socket -> IO (Either String Evt.Event)
 receiveEvent soc = do
     r <- getReply soc
@@ -182,9 +202,12 @@ receiveEvent' soc = do
         Evt.toEvent' (ty `clearBit` 31) body
 
 -- | Run a command represented as a ByteString, all the following functions are convenience wrappers around
--- @
--- Msg.sendMsg soc Msg.X b >> receiveMsg soc
--- @
+--
+-- > Msg.sendMsgPayload soc Msg.X b >> receiveMsg soc
+--
+-- Or, if there is no message body:
+--
+-- > Msg.sendMsg soc Msg.X >> receiveMsg soc
 runCommand :: Socket -> BL.ByteString -> IO (Either String MsgReply)
 runCommand soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg soc
 
@@ -227,7 +250,7 @@ getBarIds soc = do
 getBarConfig :: Socket -> BL.ByteString -> IO (Either String MsgReply)
 getBarConfig soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
--- | Like 'getBarConfig' but strict
+-- | Like 'I3IPC.getBarConfig' but strict
 getBarConfig' :: Socket -> BL.ByteString -> IO (Either String MsgReply)
 getBarConfig' soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
@@ -263,3 +286,42 @@ getSync' soc = Msg.sendMsg soc Msg.Sync >> receiveMsg' soc
 
 
 
+-- $sub
+--
+-- Commonly, you just want to subscribe to a set of event types and do something with the response:
+--
+-- > import qualified I3IPC.Subscribe   as Sub
+-- > import           I3IPC              ( subscribe )
+-- > 
+-- > main :: IO ()
+-- > main = subscribe print [Sub.Workspace, Sub.Window]
+--
+
+-- $msg
+--
+-- Other times, you want to send some kind of command to i3, or get a specific response as a one-time action.
+--
+-- > import           I3IPC              ( connecti3
+-- >                                     , getWorkspaces
+-- >                                     )
+-- > 
+-- > main :: IO ()
+-- > main = do
+-- >     soc <- connecti3
+-- >     print getWorkspaces
+-- 
+-- $func
+--
+-- All of the "getX" functions are provided for convenience, but also exported are the building blocks to write whatever you like.
+-- There are strict and non-strict variants provided, the tick (') implies strict.
+-- For instance, the above could be written as:
+--
+-- > import qualified I3IPC.Message     as Msg
+-- > import           I3IPC              ( connecti3
+-- >                                     , receiveMsg
+-- >                                     )
+-- > 
+-- > main :: IO ()
+-- > main = do
+-- >     soc <- connecti3
+-- >     print $ Msg.sendMsg soc Msg.Workspaces >> receiveMsg soc

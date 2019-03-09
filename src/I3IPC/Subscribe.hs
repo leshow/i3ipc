@@ -1,3 +1,6 @@
+{-|
+Describes the different kinds of events one can subscribe to.
+-}
 module I3IPC.Subscribe
     ( Subscribe(..)
     )
