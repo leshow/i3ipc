@@ -39,3 +39,5 @@ main = do
     soc <- connecti3
     print $ Msg.sendMsg soc Msg.Workspaces >> receiveMsg soc
 ```
+
+I'm happy to take PRs or suggestions, or simply fix issues for this library.
