@@ -31,30 +31,15 @@ library
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -frefinement-level-hole-fits=1
   default-extensions:          DeriveFoldable
-                            , DeriveFunctor
-                            , DeriveGeneric
-                            , DeriveTraversable
-                            , DeriveLift
-                            , DerivingStrategies
                             , DeriveAnyClass
-                            , GeneralizedNewtypeDeriving
                             , OverloadedStrings
                             , OverloadedLabels
                             , ExistentialQuantification
-                            , StandaloneDeriving
-                            , ScopedTypeVariables
-                            , UnicodeSyntax
                             , BinaryLiterals
                             , NumDecimals
-                            , ConstraintKinds
-                            , RankNTypes
-                            , TypeFamilies
-                            , TypeInType
                             , PolyKinds
                             , DataKinds
                             , KindSignatures
-                            , TypeOperators
-                            , TypeApplications
                             , GADTs
                             , NamedFieldPuns
                             , InstanceSigs
@@ -67,8 +52,6 @@ library
                             , FlexibleContexts
                             , BangPatterns
                             , ViewPatterns
-                            , PatternGuards
-                            , MultiWayIf
                             , EmptyCase
                             , LambdaCase
                             , TupleSections
