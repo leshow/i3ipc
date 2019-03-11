@@ -1,5 +1,7 @@
 # i3ipc
 
+[![Build Status](https://travis-ci.com/leshow/i3ipc.svg?branch=master)](https://travis-ci.com/leshow/i3ipc)
+
 Haskell type-safe bindings for working with i3 using it's unix socket IPC
 
 Subscribe to events:
