@@ -9,7 +9,7 @@
 
 
 module I3IPC
-    ( 
+    (
     -- ** Subscribe to events
     -- $sub
 
@@ -18,7 +18,7 @@ module I3IPC
 
     -- ** Convenience functions
     -- $func    
-    getSocketPath
+      getSocketPath
     , Response(..)
     , subscribe
     , receive
@@ -62,6 +62,7 @@ import           I3IPC.Reply
 
 import           System.Environment                  ( lookupEnv )
 import           Data.Maybe                          ( isJust )
+import           Data.Semigroup                      ( (<>) )
 import           System.Process.Typed                ( proc
                                                      , readProcess
                                                      )
