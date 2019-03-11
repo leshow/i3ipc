@@ -40,7 +40,9 @@ library
                             , GeneralizedNewtypeDeriving
                             , OverloadedStrings
                             , OverloadedLabels
+                            , ExistentialQuantification
                             , StandaloneDeriving
+                            , ScopedTypeVariables
                             , UnicodeSyntax
                             , BinaryLiterals
                             , NumDecimals
@@ -48,6 +50,7 @@ library
                             , RankNTypes
                             , PolyKinds
                             , DataKinds
+                            , TypeApplications
                             , GADTs
                             , NamedFieldPuns
                             , InstanceSigs
