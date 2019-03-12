@@ -116,7 +116,6 @@ subscribe handle subtypes = do
         handle r
         handleSoc soc
 
-
 -- | Connect to an i3 socket and return it
 connecti3 :: IO Socket
 connecti3 = do
@@ -291,11 +290,19 @@ getSync' soc = Msg.sendMsg soc Msg.Sync >> receiveMsg' soc
 --
 -- Commonly, you just want to subscribe to a set of event types and do something with the response:
 --
--- > import qualified I3IPC.Subscribe   as Sub
--- > import           I3IPC              ( subscribe )
+-- > import qualified I3IPC.Subscribe               as Sub
+-- > import           I3IPC.Event
+-- > import           I3IPC                          ( subscribe )
 -- > 
 -- > main :: IO ()
--- > main = subscribe print [Sub.Workspace, Sub.Window]
+-- > main = subscribe handle [Sub.Workspace, Sub.Window]
+-- >  where
+-- >   handle :: Either String Event -> IO ()
+-- >   handle (Right evt) = case evt of
+-- >     Workspace WorkspaceEvent { wrk_current } -> print wrk_current
+-- >     Window WindowEvent { win_container } -> print win_container
+-- >     _ -> error "No other event types"
+-- >   handle (Left err) = error err
 --
 
 -- $msg
