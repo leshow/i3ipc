@@ -22,15 +22,15 @@ library
                      , I3IPC.Message
                      , I3IPC.Reply
                      , I3IPC.Subscribe
-  build-depends:       base >= 4.7 && < 5
-                     , containers
-                     , aeson
-                     , bytestring
-                     , typed-process
-                     , network
-                     , binary
-                     , vector
-                     , text
+  build-depends:       base           >= 4.7 && < 5
+                     , containers     >= 0.5.8 && < 0.7
+                     , aeson          >= 1.2 && < 1.5
+                     , bytestring     >= 0.10.4 && < 0.11
+                     , typed-process  >= 0.2 && < 0.3
+                     , network        >= 2.6.3.0 && < 3.1
+                     , binary         >= 0.8.6 && < 0.9
+                     , vector         >= 0.11 && < 0.13
+                     , text           >= 1.2 && < 1.3
   default-language:    Haskell2010
   ghc-options:         -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints 
   default-extensions:          DeriveFoldable
