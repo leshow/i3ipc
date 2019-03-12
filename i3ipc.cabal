@@ -8,7 +8,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Evan Cameron
 maintainer:          cameron.evan@gmail.com
-synopsis:            A wrapper around i3's IPC, for subscribing to events & sending commands
+synopsis:            A type-safe wrapper around i3's IPC
 copyright:           2019 Evan Cameron
 category:            Lib
 build-type:          Simple
