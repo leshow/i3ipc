@@ -40,6 +40,9 @@ conf_forward:
     - -XMultiWayIf
     - -XEmptyCase
     - -XLambdaCase
+    - -XNoMonomorphismRestriction
+    - -XTupleSections
+    - -XDerivingVia
 conf_layout:
   lconfig_importColumn: 55
   lconfig_importAsColumn: 55

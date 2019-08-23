@@ -60,7 +60,11 @@ import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
 import           I3IPC.Reply
 
+import           Control.Monad                       ( unless
+                                                     , forever
+                                                     )
 import           System.Environment                  ( lookupEnv )
+import           Data.Either                         ( isLeft )
 import           Data.Maybe                          ( isJust )
 import           Data.Semigroup                      ( (<>) )
 import           System.Process.Typed                ( proc
@@ -69,7 +73,6 @@ import           System.Process.Typed                ( proc
 import           System.Exit                         ( ExitCode(..)
                                                      , exitFailure
                                                      )
-
 import           Network.Socket               hiding ( send
                                                      , sendTo
                                                      , recv
@@ -83,6 +86,7 @@ import qualified Data.ByteString.Lazy.Char8         as BL
 import           Data.Bits                           ( testBit
                                                      , clearBit
                                                      )
+import           Pipes
 
 -- | Get a new unix socket path from i3
 getSocketPath :: IO (Maybe BL.ByteString)
@@ -100,16 +104,11 @@ getSocketPath = do
 -- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
 subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
 subscribe handle subtypes = do
-    soc  <- socket AF_UNIX Stream 0
-    addr <- getSocketPath
-    case addr of
-        Nothing -> putStrLn "Failed to get i3 socket path" >> exitFailure
-        Just addr' ->
-            connect soc (SockAddrUnix $ BL.unpack addr')
-                >> Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
-                >> receiveMsg soc
-                >> handleSoc soc
-                >> close soc
+    soc <- connecti3
+    Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+        >> receiveMsg soc
+        >> handleSoc soc
+        >> close soc
   where
     handleSoc soc = do
         r <- receiveEvent soc
@@ -119,12 +118,11 @@ subscribe handle subtypes = do
 -- | Connect to an i3 socket and return it
 connecti3 :: IO Socket
 connecti3 = do
-    soc  <- socket AF_UNIX Stream 0
-    addr <- getSocketPath
-    case addr of
-        Nothing    -> putStrLn "Failed to get i3 socket path" >> exitFailure
-        Just addr' -> do
-            connect soc (SockAddrUnix $ BL.unpack addr')
+    soc <- socket AF_UNIX Stream 0
+    getSocketPath >>= \case
+        Nothing   -> putStrLn "Failed to get i3 socket path" >> exitFailure
+        Just addr -> do
+            connect soc (SockAddrUnix $ BL.unpack addr)
             pure soc
 
 -- | Useful for when you are receiving Events or Messages.
@@ -173,17 +171,13 @@ receive' soc = do
 receiveMsg :: Socket -> IO (Either String MsgReply)
 receiveMsg soc = do
     r <- getReply soc
-    pure $ do
-        (ty, body) <- r
-        toMsgReply ty body
+    pure $ r >>= uncurry toMsgReply
 
 -- | Like 'I3IPC.receiveMsg' but strict-- uses eitherDecode'
 receiveMsg' :: Socket -> IO (Either String MsgReply)
 receiveMsg' soc = do
     r <- getReply soc
-    pure $ do
-        (ty, body) <- r
-        toMsgReply' ty body
+    pure $ r >>= uncurry toMsgReply'
 
 -- | 'I3IPC.receive' specifically for Event
 receiveEvent :: Socket -> IO (Either String Evt.Event)
@@ -285,6 +279,27 @@ getSync' :: Socket -> IO (Either String MsgReply)
 getSync' soc = Msg.sendMsg soc Msg.Sync >> receiveMsg' soc
 
 
+-- | Connect to an i3 socket and return it
+listenPipe
+    :: MonadIO m => [Sub.Subscribe] -> Producer (Either String Evt.Event) m ()
+listenPipe subtypes = do
+    soc <- liftIO connecti3
+    liftIO $ Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+    liftIO $ receiveMsg soc
+    listeni3Pipe soc 
+
+closeSoc :: MonadIO m => Socket -> Consumer () m ()
+closeSoc soc = liftIO $ close soc
+
+-- >> handleSoc soc
+-- >> close soc
+
+listeni3Pipe :: MonadIO m => Socket -> Producer (Either String Evt.Event) m ()
+listeni3Pipe soc = do
+    r <- liftIO $ receiveEvent soc
+    unless (isLeft r) $ do
+        yield r
+        listeni3Pipe soc
 
 -- $sub
 --

@@ -31,6 +31,7 @@ library
                      , vector               >= 0.11.0 && < 0.13
                      , network              >= 2.6.3.5 && < 3.1
                      , typed-process        >= 0.2.4 && < 0.3
+                     , pipes                >= 4.3.0 && < 4.4
                      
   default-language:    Haskell2010
   ghc-options:         -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints 
@@ -72,6 +73,7 @@ library
                             , EmptyCase
                             , LambdaCase
                             , TupleSections
+                            , NoMonomorphismRestriction
 
 test-suite i3ipc-test 
   type:               exitcode-stdio-1.0

@@ -40,7 +40,7 @@ data Event =
 toEvent' :: Int -> BL.ByteString -> Either String Event
 toEvent' 0 = (Workspace <$>) . eitherDecode'
 toEvent' 1 = (Output <$>) . eitherDecode'
-toEvent' 2 = (Mode <$>) . eitherDecode' 
+toEvent' 2 = (Mode <$>) . eitherDecode'
 toEvent' 3 = (Window <$>) . eitherDecode'
 toEvent' 4 = (BarConfigUpdate <$>) . eitherDecode'
 toEvent' 5 = (Binding <$>) . eitherDecode'
