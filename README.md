@@ -47,7 +47,7 @@ import           I3IPC              ( connecti3
 main :: IO ()
 main = do
     soc <- connecti3
-    print getWorkspaces
+    print $ getWorkspaces soc
 ```
 
 Alternatively, you can ignore the convenience functions and construct these messages yourself:
