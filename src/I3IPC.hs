@@ -118,7 +118,7 @@ subscribe handle subtypes = do
         handle r
         handleSoc soc
 
--- | A version of 'subscibe' that allows the use of any monad transformer on top of MonadIO
+-- | A version of 'subscribe' that allows the use of any monad transformer on top of MonadIO
 subscribe' :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
 subscribe' handle subtypes = do
     soc  <- liftIO $ socket AF_UNIX Stream 0
