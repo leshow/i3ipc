@@ -21,7 +21,7 @@ module I3IPC
       getSocketPath
     , Response(..)
     , subscribe
-    , subscribe'
+    , subscribeM
     , receive
     , receive'
     , receiveMsg
@@ -119,8 +119,8 @@ subscribe handle subtypes = do
         handleSoc soc
 
 -- | A version of 'subscribe' that allows the use of any monad transformer on top of MonadIO
-subscribe' :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
-subscribe' handle subtypes = do
+subscribeM :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
+subscribeM handle subtypes = do
     soc  <- liftIO $ socket AF_UNIX Stream 0
     addr <- liftIO $ getSocketPath
     case addr of
