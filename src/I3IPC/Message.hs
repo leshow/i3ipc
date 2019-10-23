@@ -7,6 +7,7 @@ module I3IPC.Message
     )
 where
 
+import           Control.Monad.IO.Class
 import           Network.Socket.ByteString.Lazy
 import           Network.Socket                      ( Socket )
 import qualified Data.ByteString.Lazy               as BSL
@@ -60,9 +61,11 @@ createMsg msgtype = runPut $ do
     putWord32host $ fromIntegral (fromEnum msgtype)
 
 -- | Send a message over the socket of 'MessageType' and some content
-sendMsgPayload :: Socket -> MessageType -> BSL.ByteString -> IO Int64
-sendMsgPayload soc msgtype msg = createMsgPayload msgtype msg & send soc
+sendMsgPayload
+    :: MonadIO m => Socket -> MessageType -> BSL.ByteString -> m Int64
+sendMsgPayload soc msgtype msg =
+    createMsgPayload msgtype msg & send soc & liftIO
 
 -- | Similar to 'sendMsg' but with no message body
-sendMsg :: Socket -> MessageType -> IO Int64
-sendMsg soc msgtype = createMsg msgtype & send soc
+sendMsg :: MonadIO m => Socket -> MessageType -> m Int64
+sendMsg soc msgtype = createMsg msgtype & send soc & liftIO

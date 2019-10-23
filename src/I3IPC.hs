@@ -87,9 +87,9 @@ import           Data.Bits                           ( testBit
                                                      )
 
 -- | Get a new unix socket path from i3
-getSocketPath :: IO (Maybe BL.ByteString)
+getSocketPath :: MonadIO m => m (Maybe BL.ByteString)
 getSocketPath = do
-    res <- lookupEnv "I3SOCK"
+    res <- liftIO $ lookupEnv "I3SOCK"
     if isJust res
         then pure $ fmap BL.pack res
         else do
@@ -100,13 +100,14 @@ getSocketPath = do
 
 
 -- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
-subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
+subscribe
+    :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
 subscribe handle subtypes = do
     soc <- connecti3
     Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
         >> receiveMsg soc
         >> handleSoc soc
-        >> close soc
+        >> liftIO (close soc)
   where
     handleSoc soc = do
         r <- receiveEvent soc
@@ -130,39 +131,40 @@ subscribeM handle subtypes = do
         handleSoc soc
 
 -- | Connect to an i3 socket and return it
-connecti3 :: IO Socket
+connecti3 :: MonadIO m => m Socket
 connecti3 = do
-    soc <- socket AF_UNIX Stream 0
+    soc <- liftIO $ socket AF_UNIX Stream 0
     getSocketPath >>= \case
-        Nothing    -> putStrLn "Failed to get i3 socket path" >> exitFailure
+        Nothing ->
+            liftIO $ putStrLn "Failed to get i3 socket path" >> exitFailure
         Just addr' -> do
-            connect soc (SockAddrUnix $ BL.unpack addr')
+            liftIO $ connect soc (SockAddrUnix $ BL.unpack addr')
             pure soc
 
 -- | Useful for when you are receiving Events or Messages.
 data Response = Message MsgReply | Event Evt.Event deriving (Show, Eq)
 
 -- | Get and parse the response using i3's IPC
-getReply :: Socket -> IO (Either String (Int, BL.ByteString))
+getReply :: MonadIO m => Socket -> m (Either String (Int, BL.ByteString))
 getReply soc = do
-    magic <- recv soc 6
+    magic <- liftIO $ recv soc 6
     if magic == "i3-ipc"
         then do
-            len  <- fromIntegral . runGet getWord32le <$> recv soc 4
-            ty   <- fromIntegral . runGet getWord32le <$> recv soc 4
-            body <- recv soc len
+            len  <- liftIO $ fromIntegral . runGet getWord32le <$> recv soc 4
+            ty   <- liftIO $ fromIntegral . runGet getWord32le <$> recv soc 4
+            body <- liftIO $ recv soc len
             pure $ Right (ty, body)
         else pure $ Left "Failed to get reply"
 
-test :: Int -> BL.ByteString -> IO Int
+test :: MonadIO m => Int -> BL.ByteString -> m Int
 test ty body = do
-    putStrLn $ "type " <> show (ty `clearBit` 31)
-    BL.putStrLn $ "body " <> body
-    BL.putStrLn ""
+    liftIO $ putStrLn $ "type " <> show (ty `clearBit` 31)
+    liftIO $ BL.putStrLn $ "body " <> body
+    liftIO $ BL.putStrLn ""
     pure ty
 
 -- | Parse response from socket, returning either an error or a 'I3IPC.Response', representing a sum type of a 'I3IPC.Reply.MsgReply' or 'I3IPC.Event.Event'
-receive :: Socket -> IO (Either String Response)
+receive :: MonadIO m => Socket -> m (Either String Response)
 receive soc = do
     reply <- getReply soc
     case reply of
@@ -172,7 +174,7 @@ receive soc = do
         _ -> pure $ Left "Get Reply failed"
 
 -- | Like receive but strict-- will use eitherDecode' under the hood to parse
-receive' :: Socket -> IO (Either String Response)
+receive' :: MonadIO m => Socket -> m (Either String Response)
 receive' soc = do
     reply <- getReply soc
     case reply of
@@ -182,7 +184,7 @@ receive' soc = do
         _ -> pure $ Left "Get Reply failed"
 
 -- | Receive but specifically for msgs, for when you know the response won't include any Events
-receiveMsg :: Socket -> IO (Either String MsgReply)
+receiveMsg :: MonadIO m => Socket -> m (Either String MsgReply)
 receiveMsg soc = do
     r <- getReply soc
     pure $ do
@@ -190,7 +192,7 @@ receiveMsg soc = do
         toMsgReply ty body
 
 -- | Like 'I3IPC.receiveMsg' but strict-- uses eitherDecode'
-receiveMsg' :: Socket -> IO (Either String MsgReply)
+receiveMsg' :: MonadIO m => Socket -> m (Either String MsgReply)
 receiveMsg' soc = do
     r <- getReply soc
     pure $ do
@@ -198,7 +200,7 @@ receiveMsg' soc = do
         toMsgReply' ty body
 
 -- | 'I3IPC.receive' specifically for Event
-receiveEvent :: Socket -> IO (Either String Evt.Event)
+receiveEvent :: MonadIO m => Socket -> m (Either String Evt.Event)
 receiveEvent soc = do
     r <- getReply soc
     pure $ do
@@ -206,7 +208,7 @@ receiveEvent soc = do
         Evt.toEvent (ty `clearBit` 31) body
 
 -- | like 'receiveEvent' but strict-- uses eitherDecode'
-receiveEvent' :: Socket -> IO (Either String Evt.Event)
+receiveEvent' :: MonadIO m => Socket -> m (Either String Evt.Event)
 receiveEvent' soc = do
     r <- getReply soc
     pure $ do
@@ -220,37 +222,38 @@ receiveEvent' soc = do
 -- Or, if there is no message body:
 --
 -- > Msg.sendMsg soc Msg.X >> receiveMsg soc
-runCommand :: Socket -> BL.ByteString -> IO (Either String MsgReply)
+runCommand :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
 runCommand soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg soc
 
-runCommand' :: Socket -> BL.ByteString -> IO (Either String MsgReply)
+runCommand'
+    :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
 runCommand' soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg' soc
 
-getWorkspaces :: Socket -> IO (Either String MsgReply)
+getWorkspaces :: MonadIO m => Socket -> m (Either String MsgReply)
 getWorkspaces soc = Msg.sendMsg soc Msg.Workspaces >> receiveMsg soc
 
-getWorkspaces' :: Socket -> IO (Either String MsgReply)
+getWorkspaces' :: MonadIO m => Socket -> m (Either String MsgReply)
 getWorkspaces' soc = Msg.sendMsg soc Msg.Workspaces >> receiveMsg' soc
 
-getOutputs :: Socket -> IO (Either String MsgReply)
+getOutputs :: MonadIO m => Socket -> m (Either String MsgReply)
 getOutputs soc = Msg.sendMsg soc Msg.Outputs >> receiveMsg soc
 
-getOutputs' :: Socket -> IO (Either String MsgReply)
+getOutputs' :: MonadIO m => Socket -> m (Either String MsgReply)
 getOutputs' soc = Msg.sendMsg soc Msg.Outputs >> receiveMsg' soc
 
-getTree :: Socket -> IO (Either String MsgReply)
+getTree :: MonadIO m => Socket -> m (Either String MsgReply)
 getTree soc = Msg.sendMsg soc Msg.Tree >> receiveMsg soc
 
-getTree' :: Socket -> IO (Either String MsgReply)
+getTree' :: MonadIO m => Socket -> m (Either String MsgReply)
 getTree' soc = Msg.sendMsg soc Msg.Tree >> receiveMsg' soc
 
-getMarks :: Socket -> IO (Either String MsgReply)
+getMarks :: MonadIO m => Socket -> m (Either String MsgReply)
 getMarks soc = Msg.sendMsg soc Msg.Marks >> receiveMsg soc
 
-getMarks' :: Socket -> IO (Either String MsgReply)
+getMarks' :: MonadIO m => Socket -> m (Either String MsgReply)
 getMarks' soc = Msg.sendMsg soc Msg.Marks >> receiveMsg' soc
 
-getBarIds :: Socket -> IO (Either String BarIds)
+getBarIds :: MonadIO m => Socket -> m (Either String BarIds)
 getBarIds soc = do
     _ <- Msg.sendMsg soc Msg.BarConfig
     r <- getReply soc
@@ -259,41 +262,43 @@ getBarIds soc = do
         decodeBarIds (snd body)
 
 -- | Get a bar's config based on it's id
-getBarConfig :: Socket -> BL.ByteString -> IO (Either String MsgReply)
+getBarConfig
+    :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
 getBarConfig soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
 -- | Like 'I3IPC.getBarConfig' but strict
-getBarConfig' :: Socket -> BL.ByteString -> IO (Either String MsgReply)
+getBarConfig'
+    :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
 getBarConfig' soc b = Msg.sendMsgPayload soc Msg.BarConfig b >> receiveMsg' soc
 
-getVersion :: Socket -> IO (Either String MsgReply)
+getVersion :: MonadIO m => Socket -> m (Either String MsgReply)
 getVersion soc = Msg.sendMsg soc Msg.Version >> receiveMsg soc
 
-getVersion' :: Socket -> IO (Either String MsgReply)
+getVersion' :: MonadIO m => Socket -> m (Either String MsgReply)
 getVersion' soc = Msg.sendMsg soc Msg.Version >> receiveMsg' soc
 
-getBindingModes :: Socket -> IO (Either String MsgReply)
+getBindingModes :: MonadIO m => Socket -> m (Either String MsgReply)
 getBindingModes soc = Msg.sendMsg soc Msg.BindingModes >> receiveMsg soc
 
-getBindingModes' :: Socket -> IO (Either String MsgReply)
+getBindingModes' :: MonadIO m => Socket -> m (Either String MsgReply)
 getBindingModes' soc = Msg.sendMsg soc Msg.BindingModes >> receiveMsg' soc
 
-getConfig :: Socket -> IO (Either String MsgReply)
+getConfig :: MonadIO m => Socket -> m (Either String MsgReply)
 getConfig soc = Msg.sendMsg soc Msg.Config >> receiveMsg soc
 
-getConfig' :: Socket -> IO (Either String MsgReply)
+getConfig' :: MonadIO m => Socket -> m (Either String MsgReply)
 getConfig' soc = Msg.sendMsg soc Msg.Config >> receiveMsg' soc
 
-getTick :: Socket -> IO (Either String MsgReply)
+getTick :: MonadIO m => Socket -> m (Either String MsgReply)
 getTick soc = Msg.sendMsg soc Msg.Tick >> receiveMsg soc
 
-getTick' :: Socket -> IO (Either String MsgReply)
+getTick' :: MonadIO m => Socket -> m (Either String MsgReply)
 getTick' soc = Msg.sendMsg soc Msg.Tick >> receiveMsg' soc
 
-getSync :: Socket -> IO (Either String MsgReply)
+getSync :: MonadIO m => Socket -> m (Either String MsgReply)
 getSync soc = Msg.sendMsg soc Msg.Sync >> receiveMsg soc
 
-getSync' :: Socket -> IO (Either String MsgReply)
+getSync' :: MonadIO m => Socket -> m (Either String MsgReply)
 getSync' soc = Msg.sendMsg soc Msg.Sync >> receiveMsg' soc
 
 
