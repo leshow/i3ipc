@@ -1,5 +1,5 @@
 name:                i3ipc
-version:             0.1.0.1
+version:             0.2.0.0
 description:         Library for controlling i3 through it's IPC. i3 communicates using a JSON interface over a unix socket.
                      For JSON parsing I'm using Aeson. I've written out all the records and types to allow anyone to 
                      easily interact with i3 from a Haskell application.
