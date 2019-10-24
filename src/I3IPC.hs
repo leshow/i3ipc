@@ -102,16 +102,11 @@ getSocketPath = do
 -- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
 subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
 subscribe handle subtypes = do
-    soc  <- socket AF_UNIX Stream 0
-    addr <- getSocketPath
-    case addr of
-        Nothing -> putStrLn "Failed to get i3 socket path" >> exitFailure
-        Just addr' ->
-            connect soc (SockAddrUnix $ BL.unpack addr')
-                >> Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
-                >> receiveMsg soc
-                >> handleSoc soc
-                >> close soc
+    soc <- connecti3
+    Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+        >> receiveMsg soc
+        >> handleSoc soc
+        >> close soc
   where
     handleSoc soc = do
         r <- receiveEvent soc
@@ -122,18 +117,12 @@ subscribe handle subtypes = do
 subscribeM
     :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
 subscribeM handle subtypes = do
-    soc  <- liftIO $ socket AF_UNIX Stream 0
-    addr <- liftIO getSocketPath
-    case addr of
-        Nothing ->
-            liftIO $ putStrLn "Failed to get i3 socket path" >> exitFailure
-        Just addr' -> do
-            liftIO
-                $  connect soc (SockAddrUnix $ BL.unpack addr')
-                >> Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
-                >> receiveMsg soc
-                >> pure ()
-            handleSoc soc >> liftIO (close soc)
+    soc <- liftIO connecti3
+    liftIO
+        $  Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+        >> receiveMsg soc
+        >> pure ()
+    handleSoc soc >> liftIO (close soc)
   where
     handleSoc soc = do
         r <- liftIO $ receiveEvent soc
@@ -143,9 +132,8 @@ subscribeM handle subtypes = do
 -- | Connect to an i3 socket and return it
 connecti3 :: IO Socket
 connecti3 = do
-    soc  <- socket AF_UNIX Stream 0
-    addr <- getSocketPath
-    case addr of
+    soc <- socket AF_UNIX Stream 0
+    getSocketPath >>= \case
         Nothing    -> putStrLn "Failed to get i3 socket path" >> exitFailure
         Just addr' -> do
             connect soc (SockAddrUnix $ BL.unpack addr')
