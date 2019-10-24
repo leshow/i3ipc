@@ -165,39 +165,31 @@ test ty body = do
 
 -- | Parse response from socket, returning either an error or a 'I3IPC.Response', representing a sum type of a 'I3IPC.Reply.MsgReply' or 'I3IPC.Event.Event'
 receive :: MonadIO m => Socket -> m (Either String Response)
-receive soc = do
-    reply <- getReply soc
-    case reply of
-        Right (ty, body) -> pure $ if testBit ty 31
-            then Event `second` Evt.toEvent (ty `clearBit` 31) body
-            else Message `second` toMsgReply ty body
-        _ -> pure $ Left "Get Reply failed"
+receive soc = getReply soc >>= \case
+    Right (ty, body) -> pure $ if testBit ty 31
+        then Event `second` Evt.toEvent (ty `clearBit` 31) body
+        else Message `second` toMsgReply ty body
+    _ -> pure $ Left "Get Reply failed"
 
 -- | Like receive but strict-- will use eitherDecode' under the hood to parse
 receive' :: MonadIO m => Socket -> m (Either String Response)
-receive' soc = do
-    reply <- getReply soc
-    case reply of
-        Right (ty, body) -> pure $ if testBit ty 31
-            then Event `second` Evt.toEvent' (ty `clearBit` 31) body
-            else Message `second` toMsgReply' ty body
-        _ -> pure $ Left "Get Reply failed"
+receive' soc = getReply soc >>= \case
+    Right (ty, body) -> pure $ if testBit ty 31
+        then Event `second` Evt.toEvent' (ty `clearBit` 31) body
+        else Message `second` toMsgReply' ty body
+    _ -> pure $ Left "Get Reply failed"
 
 -- | Receive but specifically for msgs, for when you know the response won't include any Events
 receiveMsg :: MonadIO m => Socket -> m (Either String MsgReply)
 receiveMsg soc = do
     r <- getReply soc
-    pure $ do
-        (ty, body) <- r
-        toMsgReply ty body
+    pure $ r >>= uncurry toMsgReply
 
 -- | Like 'I3IPC.receiveMsg' but strict-- uses eitherDecode'
 receiveMsg' :: MonadIO m => Socket -> m (Either String MsgReply)
 receiveMsg' soc = do
     r <- getReply soc
-    pure $ do
-        (ty, body) <- r
-        toMsgReply' ty body
+    pure $ r >>= uncurry toMsgReply'
 
 -- | 'I3IPC.receive' specifically for Event
 receiveEvent :: MonadIO m => Socket -> m (Either String Evt.Event)
@@ -257,9 +249,7 @@ getBarIds :: MonadIO m => Socket -> m (Either String BarIds)
 getBarIds soc = do
     _ <- Msg.sendMsg soc Msg.BarConfig
     r <- getReply soc
-    pure $ do
-        body <- r
-        decodeBarIds (snd body)
+    pure $ r >>= decodeBarIds . snd
 
 -- | Get a bar's config based on it's id
 getBarConfig
