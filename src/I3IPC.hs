@@ -21,6 +21,7 @@ module I3IPC
       getSocketPath
     , Response(..)
     , subscribe
+    , subscribeM
     , receive
     , receive'
     , receiveMsg
@@ -60,6 +61,7 @@ import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
 import           I3IPC.Reply
 
+import           Control.Monad.IO.Class
 import           System.Environment                  ( lookupEnv )
 import           Data.Maybe                          ( isJust )
 import           Data.Semigroup                      ( (<>) )
@@ -115,6 +117,27 @@ subscribe handle subtypes = do
         r <- receiveEvent soc
         handle r
         handleSoc soc
+
+-- | A version of 'subscribe' that allows the use of any monad transformer on top of MonadIO
+subscribeM :: MonadIO m => (Either String Evt.Event -> m ()) -> [Sub.Subscribe] -> m ()
+subscribeM handle subtypes = do
+    soc  <- liftIO $ socket AF_UNIX Stream 0
+    addr <- liftIO $ getSocketPath
+    case addr of
+        Nothing -> liftIO $ putStrLn "Failed to get i3 socket path" >> exitFailure
+        Just addr' -> do
+            liftIO $ connect soc (SockAddrUnix $ BL.unpack addr')
+                     >> Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+                     >> receiveMsg soc
+                     >> return ()
+            handleSoc soc
+            liftIO $ close soc
+  where
+    handleSoc soc = do
+        r <- liftIO $ receiveEvent soc
+        handle r
+        handleSoc soc
+        return ()
 
 -- | Connect to an i3 socket and return it
 connecti3 :: IO Socket
