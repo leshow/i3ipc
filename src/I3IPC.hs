@@ -60,9 +60,7 @@ import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
 import           I3IPC.Reply
 
-import           Control.Monad                       ( unless
-                                                     , forever
-                                                     )
+import           Control.Monad                       ( unless )
 import           System.Environment                  ( lookupEnv )
 import           Data.Either                         ( isLeft )
 import           Data.Maybe                          ( isJust )
@@ -284,22 +282,16 @@ listenPipe
     :: MonadIO m => [Sub.Subscribe] -> Producer (Either String Evt.Event) m ()
 listenPipe subtypes = do
     soc <- liftIO connecti3
-    liftIO $ Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
-    liftIO $ receiveMsg soc
-    listeni3Pipe soc 
-
-closeSoc :: MonadIO m => Socket -> Consumer () m ()
-closeSoc soc = liftIO $ close soc
-
--- >> handleSoc soc
--- >> close soc
-
-listeni3Pipe :: MonadIO m => Socket -> Producer (Either String Evt.Event) m ()
-listeni3Pipe soc = do
-    r <- liftIO $ receiveEvent soc
-    unless (isLeft r) $ do
-        yield r
-        listeni3Pipe soc
+    _   <- liftIO $ Msg.sendMsgPayload soc Msg.Subscribe (encode subtypes)
+    _   <- liftIO $ receiveMsg soc
+    handle soc
+  where
+    handle soc = do
+        r <- liftIO $ receiveEvent soc
+        unless (isLeft r) $ do
+            yield r
+            handle soc
+        close soc
 
 -- $sub
 --

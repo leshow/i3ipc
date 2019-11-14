@@ -74,6 +74,7 @@ library
                             , LambdaCase
                             , TupleSections
                             , NoMonomorphismRestriction
+                            , TypeFamilies
 
 test-suite i3ipc-test 
   type:               exitcode-stdio-1.0
