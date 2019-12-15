@@ -40,7 +40,7 @@ data Event =
 toEvent' :: Int -> BL.ByteString -> Either String Event
 toEvent' 0 = (Workspace <$>) . eitherDecode'
 toEvent' 1 = (Output <$>) . eitherDecode'
-toEvent' 2 = (Mode <$>) . eitherDecode' 
+toEvent' 2 = (Mode <$>) . eitherDecode'
 toEvent' 3 = (Window <$>) . eitherDecode'
 toEvent' 4 = (BarConfigUpdate <$>) . eitherDecode'
 toEvent' 5 = (Binding <$>) . eitherDecode'
@@ -68,18 +68,20 @@ data WorkspaceChange =
     | Reload
     | Restored
     | Move
+    | UnknownChange
     deriving (Eq, Generic, Show)
 
 instance ToJSON WorkspaceChange where
     toEncoding = \case
-        Focus    -> text "focus"
-        Init     -> text "init"
-        Empty    -> text "empty"
-        Urgent   -> text "urgent"
-        Rename   -> text "rename"
-        Reload   -> text "reload"
-        Restored -> text "restored"
-        Move     -> text "move"
+        Focus         -> text "focus"
+        Init          -> text "init"
+        Empty         -> text "empty"
+        Urgent        -> text "urgent"
+        Rename        -> text "rename"
+        Reload        -> text "reload"
+        Restored      -> text "restored"
+        Move          -> text "move"
+        UnknownChange -> text "unknown"
 
 instance FromJSON WorkspaceChange where
     parseJSON (String s) = pure $! case s of
@@ -91,7 +93,7 @@ instance FromJSON WorkspaceChange where
         "reload"   -> Reload
         "restored" -> Restored
         "move"     -> Move
-        _          -> error "Received unrecognized WorkspaceChange"
+        _          -> UnknownChange
     parseJSON _ = mzero
 
 -- | Workspace Event
@@ -168,6 +170,7 @@ data WindowChange =
     | WinFloating -- ^ the window has transitioned to or from floating 
     | WinUrgent -- ^ the window has become urgent or lost its urgent status 
     | WinMark -- ^ a mark has been added to or removed from the window 
+    | WinUnknown -- ^ an unknown change, submit a PR to add a new WindowChange if you get this
     deriving (Eq, Show, Generic)
 
 instance ToJSON WindowChange where
@@ -181,6 +184,7 @@ instance ToJSON WindowChange where
         WinUrgent         -> text "urgent"
         WinMark           -> text "mark"
         WinClose          -> text "close"
+        WinUnknown        -> text "unknown"
 
 instance FromJSON WindowChange where
     parseJSON (String s) = pure $! case s of
@@ -193,7 +197,7 @@ instance FromJSON WindowChange where
         "urgent"          -> WinUrgent
         "mark"            -> WinMark
         "close"           -> WinClose
-        _                 -> error "Received unrecognized WorkspaceChange"
+        _                 -> WinUnknown
     parseJSON _ = mzero
 
 

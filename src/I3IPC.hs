@@ -19,6 +19,7 @@ module I3IPC
     -- ** Convenience functions
     -- $func    
       getSocketPath
+    , getSwaySocketPath
     , Response(..)
     , subscribe
     , subscribeM
@@ -28,6 +29,7 @@ module I3IPC
     , receiveMsg'
     , getReply
     , connecti3
+    , connectsway
     , receiveEvent
     , receiveEvent'
     , runCommand
@@ -98,6 +100,9 @@ getSocketPath = do
                 then pure Nothing
                 else pure $ Just (BL.filter (/= '\n') out)
 
+-- | Get a new unix socket path from sway
+getSwaySocketPath :: IO (Maybe BL.ByteString)
+getSwaySocketPath = fmap BL.pack <$> lookupEnv "SWAYSOCK"
 
 -- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
 subscribe :: (Either String Evt.Event -> IO ()) -> [Sub.Subscribe] -> IO ()
@@ -135,6 +140,16 @@ connecti3 = do
     soc <- socket AF_UNIX Stream 0
     getSocketPath >>= \case
         Nothing    -> putStrLn "Failed to get i3 socket path" >> exitFailure
+        Just addr' -> do
+            connect soc (SockAddrUnix $ BL.unpack addr')
+            pure soc
+
+-- | Connect to SWAY socket and return it
+connectsway :: IO Socket
+connectsway = do
+    soc <- socket AF_UNIX Stream 0
+    getSwaySocketPath >>= \case
+        Nothing    -> putStrLn "Failed to get sway socket path" >> exitFailure
         Just addr' -> do
             connect soc (SockAddrUnix $ BL.unpack addr')
             pure soc

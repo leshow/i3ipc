@@ -161,6 +161,7 @@ data NodeOrientation =
     Horizontal
     | Vertical
     | OrientNone
+    | UnknownOrient
     deriving (Eq, Generic, Show)
 
 instance FromJSON NodeOrientation where
@@ -168,14 +169,15 @@ instance FromJSON NodeOrientation where
         "none"       -> OrientNone
         "horizontal" -> Horizontal
         "vertical"   -> Vertical
-        _            -> error "Unrecognized NodeOrientation"
+        _            -> UnknownOrient
     parseJSON _ = mzero
 
 instance ToJSON NodeOrientation where
     toEncoding = \case
-        OrientNone -> text "none"
-        Vertical   -> text "vertical"
-        Horizontal -> text "horizontal"
+        OrientNone    -> text "none"
+        Vertical      -> text "vertical"
+        Horizontal    -> text "horizontal"
+        UnknownOrient -> text "unknown"
 
 instance ToJSON Node where
     toEncoding =
@@ -190,6 +192,7 @@ data WindowProperty =
     | Class
     | WindowRole
     | TransientFor
+    | UnknownProperty
     deriving (Eq, Enum, Ord, Generic, Show)
 
 instance FromJSONKey WindowProperty where
@@ -201,23 +204,25 @@ instance FromJSONKey WindowProperty where
             "class"         -> Class
             "window_role"   -> WindowRole
             "transient_for" -> TransientFor
-            _               -> error "Unrecognized window property"
+            _               -> UnknownProperty
 
 instance ToJSONKey WindowProperty where
     toJSONKey = ToJSONKeyText f g
       where
         f x = case x of
-            Title        -> "title"
-            Instance     -> "instance"
-            Class        -> "class"
-            WindowRole   -> "window_role"
-            TransientFor -> "transient_for"
+            Title           -> "title"
+            Instance        -> "instance"
+            Class           -> "class"
+            WindowRole      -> "window_role"
+            TransientFor    -> "transient_for"
+            UnknownProperty -> "unknown"
         g x = case x of
-            Title        -> text "title"
-            Instance     -> text "instance"
-            Class        -> text "class"
-            WindowRole   -> text "window_role"
-            TransientFor -> text "transient_for"
+            Title           -> text "title"
+            Instance        -> text "instance"
+            Class           -> text "class"
+            WindowRole      -> text "window_role"
+            TransientFor    -> text "transient_for"
+            UnknownProperty -> text "unknown"
 
 instance FromJSON WindowProperty where
     parseJSON (String s) = pure $! case s of
@@ -226,17 +231,18 @@ instance FromJSON WindowProperty where
         "class"         -> Class
         "window_role"   -> WindowRole
         "transient_for" -> TransientFor
-        _               -> error "Unrecognized WindowProperty variant found"
+        _               -> UnknownProperty
     parseJSON _ = mzero
 
 
 instance ToJSON WindowProperty where
     toEncoding = \case
-        Title        -> text "title"
-        Instance     -> text "instance"
-        Class        -> text "class"
-        WindowRole   -> text "window_role"
-        TransientFor -> text "transient_for"
+        Title           -> text "title"
+        Instance        -> text "instance"
+        Class           -> text "class"
+        WindowRole      -> text "window_role"
+        TransientFor    -> text "transient_for"
+        UnknownProperty -> text "unknown"
 
 -- | Marks Reply
 -- The reply consists of a single array of strings for each container that has a mark. A mark can only be set on one container, so the array is unique. The order of that array is undefined.
@@ -250,20 +256,22 @@ data NodeBorder =
     Normal
     | None
     | Pixel
+    | UnknownBorder
     deriving (Eq, Generic, Show)
 
 instance ToJSON NodeBorder where
     toEncoding = \case
-        Normal -> text "normal"
-        None   -> text "none"
-        Pixel  -> text "pixel"
+        Normal        -> text "normal"
+        None          -> text "none"
+        Pixel         -> text "pixel"
+        UnknownBorder -> text "unknown"
 
 instance FromJSON NodeBorder where
     parseJSON (String s) = pure $! case s of
         "normal" -> Normal
         "none"   -> None
         "pixel"  -> Pixel
-        _        -> error "Unrecognized NodeBorder found"
+        _        -> UnknownBorder
     parseJSON _ = mzero
 
 data Rect = Rect {
@@ -283,6 +291,7 @@ data NodeType =
     | FloatingConType
     | WorkspaceType
     | DockAreaType
+    | UnknownType
     deriving (Eq, Generic, Show)
 
 instance ToJSON NodeType where
@@ -293,6 +302,7 @@ instance ToJSON NodeType where
         FloatingConType -> text "floating_con"
         WorkspaceType   -> text "workspace"
         DockAreaType    -> text "dockarea"
+        UnknownType     -> text "unknown"
 
 instance FromJSON NodeType where
     parseJSON (String s) = pure $! case s of
@@ -302,7 +312,7 @@ instance FromJSON NodeType where
         "floating_con" -> FloatingConType
         "workspace"    -> WorkspaceType
         "dockarea"     -> DockAreaType
-        _              -> error "Received unrecognized NodeType"
+        _              -> UnknownType
     parseJSON _ = mzero
 
 data NodeLayout =
@@ -312,6 +322,7 @@ data NodeLayout =
     | TabbedLayout
     | DockAreaLayout
     | OutputLayout
+    | UnknownLayout
     deriving (Eq, Generic, Show)
 
 instance ToJSON NodeLayout where
@@ -322,6 +333,7 @@ instance ToJSON NodeLayout where
         TabbedLayout          -> text "tabbed"
         DockAreaLayout        -> text "dockarea"
         OutputLayout          -> text "output"
+        UnknownLayout         -> text "unknown"
 
 instance FromJSON NodeLayout where
     parseJSON (String s) = pure $! case s of
@@ -331,7 +343,7 @@ instance FromJSON NodeLayout where
         "tabbed"   -> TabbedLayout
         "dockarea" -> DockAreaLayout
         "output"   -> OutputLayout
-        _          -> error "Received unrecognized NodeLayout"
+        _          -> UnknownLayout
     parseJSON _ = mzero
 
 -- | BarConfig Reply
@@ -385,6 +397,7 @@ data BarPart =
     | BindingModeText
     | BindingModeBg
     | BindingModeBorder
+    | UnknownBarPart
     deriving (Eq, Enum, Ord, Generic, Show, FromJSONKey)
 
 instance ToJSONKey BarPart where
@@ -412,6 +425,7 @@ instance ToJSONKey BarPart where
             BindingModeText         -> "binding_mode_text"
             BindingModeBg           -> "binding_mode_bg"
             BindingModeBorder       -> "binding_mode_border"
+            UnknownBarPart          -> "unknown"
         g x = case x of
             Background              -> text "background"
             Statusline              -> text "statusline"
@@ -434,6 +448,7 @@ instance ToJSONKey BarPart where
             BindingModeText         -> text "binding_mode_text"
             BindingModeBg           -> text "binding_mode_bg"
             BindingModeBorder       -> text "binding_mode_border"
+            UnknownBarPart          -> text "unknown"
 
 instance FromJSON BarPart where
     parseJSON (String s) = pure $! case s of
@@ -458,7 +473,7 @@ instance FromJSON BarPart where
         "binding_mode_text"         -> BindingModeText
         "binding_mode_bg"           -> BindingModeBg
         "binding_mode_border"       -> BindingModeBorder
-        _ -> error "Unrecognized BarPart variant found"
+        _                           -> UnknownBarPart
     parseJSON _ = mzero
 
 instance ToJSON BarPart where
@@ -484,6 +499,7 @@ instance ToJSON BarPart where
         BindingModeText         -> text "binding_mode_text"
         BindingModeBg           -> text "binding_mode_bg"
         BindingModeBorder       -> text "binding_mode_border"
+        UnknownBarPart          -> text "unknown"
 
 -- | Version Reply
 data VersionReply = VersionReply {
