@@ -64,7 +64,7 @@ import qualified I3IPC.Event                        as Evt
 import           I3IPC.Reply
 
 import           Control.Monad.IO.Class
-import           Control.Exception
+import           Control.Exception                   ( Exception )
 import           Control.Monad.Catch                 ( MonadThrow
                                                      , throwM
                                                      )
