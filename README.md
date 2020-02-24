@@ -2,19 +2,20 @@
 
 [![Build Status](https://travis-ci.com/leshow/i3ipc.svg?branch=master)](https://travis-ci.com/leshow/i3ipc)
 
-Haskell type-safe bindings for working with i3 using it's unix socket IPC
+Haskell type-safe bindings for working with i3 using it's unix socket IPC. Sway is supposed to be protocl compatible with i3, I've included a function to bind to sway's socket also.
 
 ## Subscribing
 
 Subscribe to events:
 
 ```haskell
-import qualified I3IPC.Subscribe   as Sub
-import           I3IPC              ( subscribe )
+import qualified I3IPC.Subscribe         as Sub
+import           I3IPC                   ( subscribe )
+import           Control.Monad.IO.Class
 
 -- will print all events
 main :: IO ()
-main = subscribe print [Sub.Workspace, Sub.Window]
+main = liftIO $ subscribe print [Sub.Workspace, Sub.Window]
 ```
 
 An example of explicitly matching on some events and printing their fields:
@@ -22,12 +23,13 @@ An example of explicitly matching on some events and printing their fields:
 ```haskell
 import qualified I3IPC.Subscribe               as Sub
 import           I3IPC.Event
-import           I3IPC                          ( subscribe )
+import           I3IPC                         ( subscribe )
+import           Control.Monad.IO.Class
 
 main :: IO ()
-main = subscribe handle [Sub.Workspace, Sub.Window]
+main = liftIO $ subscribe handle [Sub.Workspace, Sub.Window]
  where
-  handle :: Either String Event -> IO ()
+  handle :: MonadIO m => Either String Event -> m ()
   handle (Right evt) = case evt of
     Workspace WorkspaceEvent { wrk_current } -> print wrk_current
     Window WindowEvent { win_container } -> print win_container
@@ -43,10 +45,11 @@ Sending Messages to i3:
 import           I3IPC              ( connecti3
                                     , getWorkspaces
                                     )
+import           Control.Monad.IO.Class                                    
 
 main :: IO ()
 main = do
-    soc <- connecti3
+    soc <- liftIO $ connecti3
     print $ getWorkspaces soc
 ```
 
@@ -57,10 +60,11 @@ import qualified I3IPC.Message     as Msg
 import           I3IPC              ( connecti3
                                     , receiveMsg
                                     )
+import           Control.Monad.IO.Class                                    
 
 main :: IO ()
 main = do
-    soc <- connecti3
+    soc <- liftIO $ connecti3
     print $ Msg.sendMsg soc Msg.Workspaces >> receiveMsg soc
 ```
 
