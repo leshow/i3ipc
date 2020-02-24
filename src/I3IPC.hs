@@ -111,8 +111,8 @@ getSocketPath = do
                 else pure $ Just (BL.filter (/= '\n') out)
 
 -- | Get a new unix socket path from sway
-getSwaySocketPath :: IO (Maybe BL.ByteString)
-getSwaySocketPath = fmap BL.pack <$> lookupEnv "SWAYSOCK"
+getSwaySocketPath :: MonadIO m => m (Maybe BL.ByteString)
+getSwaySocketPath = fmap BL.pack <$> liftIO (lookupEnv "SWAYSOCK")
 
 -- | Subscribe with a list of 'I3IPC.Subscribe.Subscribe' types, and subscribe will to respond with specific 'I3IPC.Event.Event'
 subscribe
@@ -161,13 +161,13 @@ connecti3 = do
             pure soc
 
 -- | Connect to SWAY socket and return it
-connectsway :: IO Socket
+connectsway :: (MonadThrow m, MonadIO m) => m Socket
 connectsway = do
-    soc <- socket AF_UNIX Stream 0
+    soc <- liftIO $ socket AF_UNIX Stream 0
     getSwaySocketPath >>= \case
-        Nothing    -> putStrLn "Failed to get sway socket path" >> exitFailure
+        Nothing    -> throwM $ ConnectException "Failed to get i3 socket path"
         Just addr' -> do
-            connect soc (SockAddrUnix $ BL.unpack addr')
+            liftIO $ connect soc (SockAddrUnix $ BL.unpack addr')
             pure soc
 
 -- | Useful for when you are receiving Events or Messages.
