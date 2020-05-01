@@ -12,7 +12,7 @@ synopsis:            A type-safe wrapper around i3's IPC
 copyright:           2019 Evan Cameron
 category:            Lib
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:  README.md test/event/*.json test/reply/*.json
 cabal-version:       >=1.10
 
 library
