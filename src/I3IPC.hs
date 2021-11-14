@@ -55,42 +55,46 @@ module I3IPC
     , getTick'
     , getSync
     , getSync'
-    )
-where
+    ) where
 
-import qualified I3IPC.Message                      as Msg
-import qualified I3IPC.Subscribe                    as Sub
 import qualified I3IPC.Event                        as Evt
+import qualified I3IPC.Message                      as Msg
 import           I3IPC.Reply
+import qualified I3IPC.Subscribe                    as Sub
 
-import           Control.Monad.IO.Class
 import           Control.Exception                   ( Exception )
 import           Control.Monad.Catch                 ( MonadThrow
                                                      , throwM
                                                      )
-import           System.Environment                  ( lookupEnv )
+import           Control.Monad.IO.Class
 import           Data.Maybe                          ( isJust )
 import           Data.Semigroup                      ( (<>) )
+import           System.Environment                  ( lookupEnv )
+import           System.Exit                         ( ExitCode(..) )
 import           System.Process.Typed                ( proc
                                                      , readProcess
                                                      )
-import           System.Exit                         ( ExitCode(..) )
 
-import           Network.Socket               hiding ( send
-                                                     , sendTo
-                                                     , recv
-                                                     , recvFrom
-                                                     )
-import           Network.Socket.ByteString.Lazy
 import           Data.Aeson                          ( encode )
-import           Data.Binary.Get
 import           Data.Bifunctor                      ( second )
-import qualified Data.ByteString.Lazy.Char8         as BL
-import           Data.Typeable                       ( Typeable )
-import qualified Data.Text                          as T
-import           Data.Bits                           ( testBit
-                                                     , clearBit
+import           Data.Binary.Get                     ( getWord32le
+                                                     , runGet
                                                      )
+import           Data.Bits                           ( clearBit
+                                                     , testBit
+                                                     )
+import qualified Data.ByteString.Lazy.Char8         as BL
+import qualified Data.Text                          as T
+import           Data.Typeable                       ( Typeable )
+import           Network.Socket                      ( Family(AF_UNIX)
+                                                     , SockAddr(SockAddrUnix)
+                                                     , Socket
+                                                     , SocketType(Stream)
+                                                     , close
+                                                     , connect
+                                                     , socket
+                                                     )
+import           Network.Socket.ByteString.Lazy      ( recv )
 
 -- | Exception type
 data I3Exception = ConnectException T.Text | ProcessException
@@ -252,7 +256,8 @@ receiveEvent' soc = do
 -- Or, if there is no message body:
 --
 -- > Msg.sendMsg soc Msg.X >> receiveMsg soc
-runCommand :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
+runCommand
+    :: MonadIO m => Socket -> BL.ByteString -> m (Either String MsgReply)
 runCommand soc b = Msg.sendMsgPayload soc Msg.RunCommand b >> receiveMsg soc
 
 runCommand'

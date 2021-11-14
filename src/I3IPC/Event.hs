@@ -4,18 +4,18 @@ Related to `I3IPC.Subscribe.Subscribe', specifically, each 'I3IPC.Event.Event' c
 {-# LANGUAGE RecordWildCards #-}
 module I3IPC.Event where
 
-import           I3IPC.Reply                         ( Node
-                                                     , BarConfigReply
+import           I3IPC.Reply                         ( BarConfigReply
+                                                     , Node
                                                      )
 
 import           Control.Monad                       ( mzero )
-import           GHC.Generics
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
 import qualified Data.ByteString.Lazy               as BL
 import           Data.Int
-import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
+import           Data.Vector                         ( Vector )
+import           GHC.Generics
 
 -- | Responses to the various events you can subscribe to.
 data Event =
@@ -99,11 +99,12 @@ instance FromJSON WorkspaceChange where
 -- | Workspace Event
 -- This event consists of a single serialized map containing a property change (string) which indicates the type of the change ("focus", "init", "empty", "urgent", "reload", "rename", "restored", "move"). A current (object) property will be present with the affected workspace whenever the type of event affects a workspace (otherwise, it will be +null).
 -- When the change is "focus", an old (object) property will be present with the previous workspace. When the first switch occurs (when i3 focuses the workspace visible at the beginning) there is no previous workspace, and the old property will be set to null. Also note that if the previous is empty it will get destroyed when switching, but will still be present in the "old" property.
-data WorkspaceEvent = WorkspaceEvent {
-    wrk_change :: !WorkspaceChange -- ^ Type of workspace change
+data WorkspaceEvent = WorkspaceEvent
+    { wrk_change  :: !WorkspaceChange -- ^ Type of workspace change
     , wrk_current :: !(Maybe Node) -- ^ If the type of event affects the workspace this will have a Just instance
-    , wrk_old :: !(Maybe Node) -- ^ Will be Just only when change is Focus and there was a previous workspace
-} deriving (Eq, Generic, Show)
+    , wrk_old     :: !(Maybe Node) -- ^ Will be Just only when change is Focus and there was a previous workspace
+    }
+    deriving (Eq, Generic, Show)
 
 instance ToJSON WorkspaceEvent where
     toEncoding = genericToEncoding defaultOptions { fieldLabelModifier = drop 4
@@ -119,9 +120,10 @@ instance FromJSON WorkspaceEvent where
 
 -- | Output Event
 -- This event consists of a single serialized map containing a property change (string) which indicates the type of the change (currently only "unspecified").
-data OutputEvent = OutputEvent {
-    output_change :: !Text -- ^ Currently only "unspecified"
-} deriving (Eq, Generic, Show)
+data OutputEvent = OutputEvent
+    { output_change :: !Text -- ^ Currently only "unspecified"
+    }
+    deriving (Eq, Generic, Show)
 
 instance ToJSON OutputEvent where
     toEncoding =
@@ -132,10 +134,11 @@ instance FromJSON OutputEvent where
 
 -- |  Mode Event
 -- This event consists of a single serialized map containing a property change (string) which holds the name of current mode in use. The name is the same as specified in config when creating a mode. The default mode is simply named default. It contains a second property, pango_markup, which defines whether pango markup shall be used for displaying this mode.
-data ModeEvent = ModeEvent {
-    mode_change :: !Text -- ^ always "default"
+data ModeEvent = ModeEvent
+    { mode_change       :: !Text -- ^ always "default"
     , mode_pango_markup :: !Bool -- ^ Whether pango markup should be used for displaying this mode
-} deriving (Eq, Generic, Show)
+    }
+    deriving (Eq, Generic, Show)
 
 
 instance ToJSON ModeEvent where
@@ -148,10 +151,11 @@ instance FromJSON ModeEvent where
 
 -- | Window Event
 -- This event consists of a single serialized map containing a property change (string) which indicates the type of the change
-data WindowEvent = WindowEvent {
-    win_change :: !WindowChange
+data WindowEvent = WindowEvent
+    { win_change    :: !WindowChange
     , win_container :: !Node -- ^ Additionally a container (object) field will be present, which consists of the window’s parent container. Be aware that for the "new" event, the container will hold the initial name of the newly reparented window (e.g. if you run urxvt with a shell that changes the title, you will still at this point get the window title as "urxvt").
-} deriving (Eq, Show, Generic)
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON WindowEvent where
     toEncoding =
@@ -207,10 +211,11 @@ type BarConfigUpdateEvent = BarConfigReply
 
 -- | Binding Event
 -- This event consists of a single serialized map reporting on the details of a binding that ran a command because of user input. The change (string) field indicates what sort of binding event was triggered (right now it will always be "run" but may be expanded in the future).
-data BindingEvent = BindingEvent {
-    bind_change :: !Text -- ^ right now this is always "run"
+data BindingEvent = BindingEvent
+    { bind_change  :: !Text -- ^ right now this is always "run"
     , bind_binding :: !BindingObject -- ^ Details about the binding that was run
-} deriving (Eq, Show, Generic)
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON BindingEvent where
     toEncoding =
@@ -219,13 +224,14 @@ instance ToJSON BindingEvent where
 instance FromJSON BindingEvent where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 5 }
 
-data BindingObject = BindingObject {
-    bind_command :: !Text
+data BindingObject = BindingObject
+    { bind_command          :: !Text
     , bind_event_state_mask :: !(Vector Text)
-    , bind_input_code :: !Int32
-    , bind_symbol :: !(Maybe Text)
-    , bind_input_type :: !BindType
-} deriving (Eq, Show, Generic)
+    , bind_input_code       :: !Int32
+    , bind_symbol           :: !(Maybe Text)
+    , bind_input_type       :: !BindType
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON BindingObject where
     toEncoding =
@@ -251,9 +257,10 @@ instance ToJSON BindType where
 
 -- | Shutdown Event
 -- This event is triggered when the connection to the ipc is about to shutdown because of a user action such as a restart or exit command. The change (string) field indicates why the ipc is shutting down. It can be either "restart" or "exit".
-data ShutdownEvent = ShutdownEvent {
-    shutdown_change :: !ShutdownChange
-} deriving (Eq, Show, Generic)
+data ShutdownEvent = ShutdownEvent
+    { shutdown_change :: !ShutdownChange
+    }
+    deriving (Eq, Show, Generic)
 
 instance FromJSON ShutdownEvent where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 9 }
@@ -278,10 +285,11 @@ instance ToJSON ShutdownChange where
 
 -- | Tick Event
 -- This event is triggered by a subscription to tick events or by a 'I3IPC.Message.Tick' message.
-data TickEvent = TickEvent {
-    tick_first :: !Bool
+data TickEvent = TickEvent
+    { tick_first   :: !Bool
     , tick_payload :: !Text
-} deriving (Eq, Show, Generic)
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON TickEvent where
     toEncoding =

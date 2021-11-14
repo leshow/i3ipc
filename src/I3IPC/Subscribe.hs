@@ -3,12 +3,11 @@ Describes the different kinds of events one can subscribe to.
 -}
 module I3IPC.Subscribe
     ( Subscribe(..)
-    )
-where
+    ) where
 
-import           GHC.Generics
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
+import           GHC.Generics
 
 
 -- | Subscribe from i3 have the following types (https://i3wm.org/docs/ipc.html#_events)

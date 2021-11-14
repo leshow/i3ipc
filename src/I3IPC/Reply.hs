@@ -1,14 +1,14 @@
 module I3IPC.Reply where
 
-import           GHC.Generics
 import           Control.Monad                       ( mzero )
 import           Data.Aeson
 import           Data.Aeson.Encoding                 ( text )
 import qualified Data.ByteString.Lazy               as BL
 import           Data.Int
 import           Data.Map.Strict                     ( Map )
-import           Data.Vector                         ( Vector )
 import           Data.Text                           ( Text )
+import           Data.Vector                         ( Vector )
+import           GHC.Generics
 
 data MsgReply =
     -- | Run the payload as an i3 command (like the commands you can bind to keys).
@@ -72,16 +72,18 @@ decodeBarIds = eitherDecode
 
 -- | Success Reply
 -- used for Sync, Subscribe, Command, Tick
-data Success = Success {
-    success :: !Bool
-} deriving (Eq, Show, Generic, FromJSON)
+data Success = Success
+    { success :: !Bool
+    }
+    deriving (Eq, Show, Generic, FromJSON)
 
 instance ToJSON Success where
     toEncoding = genericToEncoding defaultOptions
 
 -- | Workspaces Reply
 -- The reply consists of a serialized list of workspaces. 
-data WorkspaceReply = WorkspaceReply !(Vector Workspace) deriving (Eq, Generic, Show)
+data WorkspaceReply = WorkspaceReply !(Vector Workspace)
+    deriving (Eq, Generic, Show)
 
 instance ToJSON WorkspaceReply where
     toEncoding = genericToEncoding defaultOptions
@@ -89,15 +91,16 @@ instance ToJSON WorkspaceReply where
 instance FromJSON WorkspaceReply where
     parseJSON = genericParseJSON defaultOptions
 
-data Workspace = Workspace {
-    ws_num :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
-    , ws_name :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
+data Workspace = Workspace
+    { ws_num     :: !Int32 -- ^ The logical number of the workspace. Corresponds to the command to switch to this workspace. For named workspaces, this will be -1. 
+    , ws_name    :: !Text -- ^ The name of this workspace (by default num+1), as changed by the user. Encoded in UTF-8. 
     , ws_visible :: !Bool -- ^ Whether this workspace is currently visible on an output (multiple workspaces can be visible at the same time). 
     , ws_focused :: !Bool -- ^ Whether this workspace currently has the focus (only one workspace can have the focus at the same time).
-    , ws_urgent :: !Bool -- ^ Whether a window on this workspace has the "urgent" flag set. 
-    , ws_rect :: !Rect -- ^ The rectangle of this workspace (equals the rect of the output it is on), consists of x, y, width, height. 
-    , ws_output :: !Text -- ^ The video output this workspace is on (LVDS1, VGA1, …). 
-} deriving (Eq, Generic, Show)
+    , ws_urgent  :: !Bool -- ^ Whether a window on this workspace has the "urgent" flag set. 
+    , ws_rect    :: !Rect -- ^ The rectangle of this workspace (equals the rect of the output it is on), consists of x, y, width, height. 
+    , ws_output  :: !Text -- ^ The video output this workspace is on (LVDS1, VGA1, …). 
+    }
+    deriving (Eq, Generic, Show)
 
 instance ToJSON Workspace where
     toEncoding =
@@ -108,7 +111,8 @@ instance FromJSON Workspace where
 
 -- | Outputs Reply
 -- The reply consists of a serialized list of outputs. 
-data OutputsReply = OutputsReply !(Vector Output) deriving (Eq, Generic, Show)
+data OutputsReply = OutputsReply !(Vector Output)
+    deriving (Eq, Generic, Show)
 
 instance ToJSON OutputsReply where
     toEncoding = genericToEncoding defaultOptions
@@ -116,13 +120,14 @@ instance ToJSON OutputsReply where
 instance FromJSON OutputsReply where
     parseJSON = genericParseJSON defaultOptions
 
-data Output = Output {
-    output_name :: !Text
-    , output_active :: !Bool
-    , output_primary :: !Bool
+data Output = Output
+    { output_name              :: !Text
+    , output_active            :: !Bool
+    , output_primary           :: !Bool
     , output_current_workspace :: !(Maybe Text)
-    , output_rect :: !Rect
-} deriving (Eq, Show, Generic)
+    , output_rect              :: !Rect
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON Output where
     toEncoding =
@@ -133,29 +138,30 @@ instance FromJSON Output where
 
 -- | Tree Reply
 -- The reply consists of a serialized tree. Each node in the tree (representing one container) has at least the properties listed below. While the nodes might have more properties, please do not use any properties which are not documented here. They are not yet finalized and will probably change!
-data Node = Node {
-    node_id :: !Int -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
-    , node_name :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
-    , node_type :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
-    , node_output :: !(Maybe Text) -- ^ The X11 display the node is drawn in. ex. "DP-4.8"
-    , node_orientation :: !NodeOrientation -- ^ Can either be "horizontal" "vertical" or "none"
-    , node_border :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
+data Node = Node
+    { node_id                   :: !Int -- ^ The internal ID (actually a C pointer value) of this container. Do not make any assumptions about it. You can use it to (re-)identify and address containers when talking to i3. 
+    , node_name                 :: !(Maybe Text) -- ^ The internal name of this container. For all containers which are part of the tree structure down to the workspace contents, this is set to a nice human-readable name of the container. For containers that have an X11 window, the content is the title (_NET_WM_NAME property) of that window. For all other containers, the content is not defined (yet). 
+    , node_type                 :: !NodeType -- ^ Type of this container. Can be one of "root", "output", "con", "floating_con", "workspace" or "dockarea". 
+    , node_output               :: !(Maybe Text) -- ^ The X11 display the node is drawn in. ex. "DP-4.8"
+    , node_orientation          :: !NodeOrientation -- ^ Can either be "horizontal" "vertical" or "none"
+    , node_border               :: !NodeBorder -- ^ Can be either "normal", "none" or "pixel", depending on the container’s border style. 
     , node_current_border_width :: !Int32 -- ^ Number of pixels of the border width. 
-    , node_layout :: !NodeLayout -- ^ Can be either "splith", "splitv", "stacked", "tabbed", "dockarea" or "output". Other values might be possible in the future, should we add new layouts. 
-    , node_percent :: !(Maybe Float) -- ^ The percentage which this container takes in its parent. A value of null means that the percent property does not make sense for this container, for example for the root container. 
-    , node_rect :: !Rect -- ^ The absolute display coordinates for this container. Display coordinates means that when you have two 1600x1200 monitors on a single X11 Display (the standard way), the coordinates of the first window on the second monitor are { "x": 1600, "y": 0, "width": 1600, "height": 1200 }. 
-    , node_window_rect :: !Rect -- ^ The coordinates of the actual client window inside its container. These coordinates are relative to the container and do not include the window decoration (which is actually rendered on the parent container). So, when using the default layout, you will have a 2 pixel border on each side, making the window_rect { "x": 2, "y": 0, "width": 632, "height": 366 } (for example). 
-    , node_deco_rect :: !Rect -- ^ The coordinates of the window decoration inside its container. These coordinates are relative to the container and do not include the actual client window. 
-    , node_geometry :: !Rect -- ^ The original geometry the window specified when i3 mapped it. Used when switching a window to floating mode, for example. 
-    , node_window :: !(Maybe Int32) -- ^ The X11 window ID of the actual client window inside this container. This field is set to null for split containers or otherwise empty containers. This ID corresponds to what xwininfo(1) and other X11-related tools display (usually in hex). 
-    , node_window_properties :: !(Maybe (Map WindowProperty (Maybe Text))) -- ^ X11 window properties title, instance, class, window_role and transient_for. 
-    , node_urgent :: !Bool -- ^ Whether this container (window, split container, floating container or workspace) has the urgency hint set, directly or indirectly. All parent containers up until the workspace container will be marked urgent if they have at least one urgent child. 
-    , node_focused :: !Bool -- ^ Whether this container is currently focused. 
-    , node_focus :: !(Vector Int64) -- ^ List of child node IDs (see nodes, floating_nodes and id) in focus order. Traversing the tree by following the first entry in this array will result in eventually reaching the one node with focused set to true. 
-    , node_sticky :: !Bool
-    , node_floating_nodes :: !(Vector Node) -- ^ The floating child containers of this node. Only non-empty on nodes with type workspace. 
-    , node_nodes :: !(Vector Node) -- ^ The tiling (i.e. non-floating) child containers of this node. 
-} deriving (Eq, Generic, Show)
+    , node_layout               :: !NodeLayout -- ^ Can be either "splith", "splitv", "stacked", "tabbed", "dockarea" or "output". Other values might be possible in the future, should we add new layouts. 
+    , node_percent              :: !(Maybe Float) -- ^ The percentage which this container takes in its parent. A value of null means that the percent property does not make sense for this container, for example for the root container. 
+    , node_rect                 :: !Rect -- ^ The absolute display coordinates for this container. Display coordinates means that when you have two 1600x1200 monitors on a single X11 Display (the standard way), the coordinates of the first window on the second monitor are { "x": 1600, "y": 0, "width": 1600, "height": 1200 }. 
+    , node_window_rect          :: !Rect -- ^ The coordinates of the actual client window inside its container. These coordinates are relative to the container and do not include the window decoration (which is actually rendered on the parent container). So, when using the default layout, you will have a 2 pixel border on each side, making the window_rect { "x": 2, "y": 0, "width": 632, "height": 366 } (for example). 
+    , node_deco_rect            :: !Rect -- ^ The coordinates of the window decoration inside its container. These coordinates are relative to the container and do not include the actual client window. 
+    , node_geometry             :: !Rect -- ^ The original geometry the window specified when i3 mapped it. Used when switching a window to floating mode, for example. 
+    , node_window               :: !(Maybe Int32) -- ^ The X11 window ID of the actual client window inside this container. This field is set to null for split containers or otherwise empty containers. This ID corresponds to what xwininfo(1) and other X11-related tools display (usually in hex). 
+    , node_window_properties    :: !(Maybe (Map WindowProperty (Maybe Text))) -- ^ X11 window properties title, instance, class, window_role and transient_for. 
+    , node_urgent               :: !Bool -- ^ Whether this container (window, split container, floating container or workspace) has the urgency hint set, directly or indirectly. All parent containers up until the workspace container will be marked urgent if they have at least one urgent child. 
+    , node_focused              :: !Bool -- ^ Whether this container is currently focused. 
+    , node_focus                :: !(Vector Int64) -- ^ List of child node IDs (see nodes, floating_nodes and id) in focus order. Traversing the tree by following the first entry in this array will result in eventually reaching the one node with focused set to true. 
+    , node_sticky               :: !Bool
+    , node_floating_nodes       :: !(Vector Node) -- ^ The floating child containers of this node. Only non-empty on nodes with type workspace. 
+    , node_nodes                :: !(Vector Node) -- ^ The tiling (i.e. non-floating) child containers of this node. 
+    }
+    deriving (Eq, Generic, Show)
 
 data NodeOrientation =
     Horizontal
@@ -192,6 +198,7 @@ data WindowProperty =
     | Class
     | WindowRole
     | TransientFor
+    | Machine
     | UnknownProperty
     deriving (Eq, Enum, Ord, Generic, Show)
 
@@ -204,6 +211,7 @@ instance FromJSONKey WindowProperty where
             "class"         -> Class
             "window_role"   -> WindowRole
             "transient_for" -> TransientFor
+            "machine"       -> Machine
             _               -> UnknownProperty
 
 instance ToJSONKey WindowProperty where
@@ -215,6 +223,7 @@ instance ToJSONKey WindowProperty where
             Class           -> "class"
             WindowRole      -> "window_role"
             TransientFor    -> "transient_for"
+            Machine         -> "machine"
             UnknownProperty -> "unknown"
         g x = case x of
             Title           -> text "title"
@@ -222,6 +231,7 @@ instance ToJSONKey WindowProperty where
             Class           -> text "class"
             WindowRole      -> text "window_role"
             TransientFor    -> text "transient_for"
+            Machine         -> text "machine"
             UnknownProperty -> text "unknown"
 
 instance FromJSON WindowProperty where
@@ -231,6 +241,7 @@ instance FromJSON WindowProperty where
         "class"         -> Class
         "window_role"   -> WindowRole
         "transient_for" -> TransientFor
+        "machine"       -> Machine
         _               -> UnknownProperty
     parseJSON _ = mzero
 
@@ -242,12 +253,14 @@ instance ToJSON WindowProperty where
         Class           -> text "class"
         WindowRole      -> text "window_role"
         TransientFor    -> text "transient_for"
+        Machine         -> text "machine"
         UnknownProperty -> text "unknown"
 
 -- | Marks Reply
 -- The reply consists of a single array of strings for each container that has a mark. A mark can only be set on one container, so the array is unique. The order of that array is undefined.
 -- If no window has a mark the response will be the empty array [].
-data MarksReply = MarksReply !(Vector Text) deriving (Eq, Generic, Show, FromJSON)
+data MarksReply = MarksReply !(Vector Text)
+    deriving (Eq, Generic, Show, FromJSON)
 
 instance ToJSON MarksReply where
     toEncoding = genericToEncoding defaultOptions
@@ -274,12 +287,13 @@ instance FromJSON NodeBorder where
         _        -> UnknownBorder
     parseJSON _ = mzero
 
-data Rect = Rect {
-    x :: !Int32
-    , y :: !Int32
-    , width :: !Int32
+data Rect = Rect
+    { x      :: !Int32
+    , y      :: !Int32
+    , width  :: !Int32
     , height :: !Int32
-} deriving (Eq, Generic, Show, FromJSON)
+    }
+    deriving (Eq, Generic, Show, FromJSON)
 
 instance ToJSON Rect where
     toEncoding = genericToEncoding defaultOptions
@@ -348,7 +362,8 @@ instance FromJSON NodeLayout where
 
 -- | BarConfig Reply
 -- This can be used by third-party workspace bars (especially i3bar, but others are free to implement compatible alternatives) to get the bar block configuration from i3.
-data BarIds = BarIds !(Vector Text) deriving (Eq, Generic, Show)
+data BarIds = BarIds !(Vector Text)
+    deriving (Eq, Generic, Show)
 
 instance ToJSON BarIds where
     toEncoding = genericToEncoding defaultOptions
@@ -356,17 +371,18 @@ instance ToJSON BarIds where
 instance FromJSON BarIds where
     parseJSON = genericParseJSON defaultOptions
 
-data BarConfigReply = BarConfigReply {
-    bar_id :: !Text
-    , bar_mode :: !Text
-    , bar_position :: !Text
-    , bar_status_command :: !Text
-    , bar_font :: !Text
-    , bar_workspace_buttons :: !Bool
+data BarConfigReply = BarConfigReply
+    { bar_id                     :: !Text
+    , bar_mode                   :: !Text
+    , bar_position               :: !Text
+    , bar_status_command         :: !Text
+    , bar_font                   :: !Text
+    , bar_workspace_buttons      :: !Bool
     , bar_binding_mode_indicator :: !Bool
-    , bar_verbose :: !Bool
-    , bar_colors :: !(Map BarPart Text)
-} deriving (Eq, Generic, Show)
+    , bar_verbose                :: !Bool
+    , bar_colors                 :: !(Map BarPart Text)
+    }
+    deriving (Eq, Generic, Show)
 
 instance ToJSON BarConfigReply where
     toEncoding =
@@ -502,13 +518,14 @@ instance ToJSON BarPart where
         UnknownBarPart          -> text "unknown"
 
 -- | Version Reply
-data VersionReply = VersionReply {
-    v_major :: !Int32
-    , v_minor :: !Int32
-    , v_patch :: !Int32
-    , v_human_readable :: !Text
+data VersionReply = VersionReply
+    { v_major                   :: !Int32
+    , v_minor                   :: !Int32
+    , v_patch                   :: !Int32
+    , v_human_readable          :: !Text
     , v_loaded_config_file_name :: !Text
-} deriving (Eq, Generic, Show)
+    }
+    deriving (Eq, Generic, Show)
 
 instance ToJSON VersionReply where
     toEncoding =
@@ -519,7 +536,8 @@ instance FromJSON VersionReply where
 
 -- | BindingModes Reply
 -- The reply consists of an array of all currently configured binding modes.
-data BindingModesReply = BindingModesReply !(Vector Text) deriving (Eq, Generic, Show)
+data BindingModesReply = BindingModesReply !(Vector Text)
+    deriving (Eq, Generic, Show)
 
 instance ToJSON BindingModesReply where
     toEncoding = genericToEncoding defaultOptions
@@ -529,9 +547,10 @@ instance FromJSON BindingModesReply where
 
 -- | Config Reply
 -- The config reply is a map which currently only contains the "config" member, which is a string containing the config file as loaded by i3 most recently.
-data ConfigReply = ConfigReply {
-    c_config :: !Text
-} deriving (Eq, Generic, Show)
+data ConfigReply = ConfigReply
+    { c_config :: !Text
+    }
+    deriving (Eq, Generic, Show)
 
 
 instance ToJSON ConfigReply where

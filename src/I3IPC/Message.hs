@@ -4,16 +4,15 @@ module I3IPC.Message
     , createMsgPayload
     , sendMsg
     , sendMsgPayload
-    )
-where
+    ) where
 
 import           Control.Monad.IO.Class
-import           Network.Socket.ByteString.Lazy
-import           Network.Socket                      ( Socket )
-import qualified Data.ByteString.Lazy               as BSL
 import           Data.Binary.Put
+import qualified Data.ByteString.Lazy               as BSL
 import           Data.Function                       ( (&) )
 import           Data.Int
+import           Network.Socket                      ( Socket )
+import           Network.Socket.ByteString.Lazy
 
 -- | I3 IPC Commands https://i3wm.org/docs/ipc.html#_sending_messages_to_i3
 -- 
